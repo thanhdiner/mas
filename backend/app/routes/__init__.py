@@ -1,0 +1,6 @@
+from app.routes.agents import router as agents_router
+from app.routes.tasks import router as tasks_router
+from app.routes.executions import router as executions_router
+from app.routes.dashboard import router as dashboard_router
+from app.routes.ws import router as ws_router
+from app.routes.auth import router as auth_router
