@@ -66,9 +66,6 @@
 
 /* Dark mode is the primary mode per DESIGN.md */
 :root {
-  --font-heading: "Space Grotesk", system-ui, sans-serif;
-  --font-sans: "Inter", system-ui, sans-serif;
-
   /* Surface hierarchy from DESIGN.md */
   --surface-lowest: #060e20;
   --surface-low: #131b2e;
