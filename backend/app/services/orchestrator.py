@@ -170,8 +170,9 @@ class Orchestrator:
         await ws_manager.broadcast(execution.id, {
             "type": "step",
             "stepType": "thinking",
-            "content": f"Agent '{agent.name}' is analyzing the task...",
+            "agentId": agent.id,
             "agentName": agent.name,
+            "content": f"Agent '{agent.name}' is analyzing the task...",
         })
 
         # Prepare tools
@@ -262,6 +263,8 @@ class Orchestrator:
                 )
                 await ws_manager.broadcast(execution.id, {
                     "type": "waiting_approval",
+                    "agentId": agent.id,
+                    "agentName": agent.name,
                     "result": content,
                 })
             else:
@@ -273,6 +276,8 @@ class Orchestrator:
                 )
                 await ws_manager.broadcast(execution.id, {
                     "type": "execution_completed",
+                    "agentId": agent.id,
+                    "agentName": agent.name,
                     "result": content,
                 })
             return
@@ -329,7 +334,9 @@ class Orchestrator:
         )
         await ws_manager.broadcast(execution.id, {
             "type": "delegation",
+            "fromAgentId": agent.id,
             "fromAgent": agent.name,
+            "toAgentId": target_agent_id,
             "toAgent": target_agent.name,
             "subtaskTitle": subtask_title,
         })
