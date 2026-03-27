@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
-from bson import ObjectId
-from typing import Optional, Any
+from typing import Any, Optional
+
 from app.database import get_db
 from app.models.execution import (
-    ExecutionResponse, ExecutionStepResponse,
-    ExecutionStatus, StepType,
+    ExecutionResponse,
+    ExecutionStatus,
+    ExecutionStepResponse,
+    StepType,
 )
+from app.utils.object_id import to_object_id
 
 
 class ExecutionService:
@@ -33,7 +36,9 @@ class ExecutionService:
     @staticmethod
     async def get_execution(execution_id: str) -> Optional[ExecutionResponse]:
         db = get_db()
-        doc = await db.executions.find_one({"_id": ObjectId(execution_id)})
+        doc = await db.executions.find_one(
+            {"_id": to_object_id(execution_id, "execution_id")}
+        )
         if not doc:
             return None
         return ExecutionResponse(
@@ -71,7 +76,7 @@ class ExecutionService:
         db = get_db()
         now = datetime.now(timezone.utc)
         await db.executions.update_one(
-            {"_id": ObjectId(execution_id)},
+            {"_id": to_object_id(execution_id, "execution_id")},
             {"$set": {"status": status.value, "endedAt": now}},
         )
         return await ExecutionService.get_execution(execution_id)
@@ -112,22 +117,22 @@ class ExecutionService:
     @staticmethod
     async def get_steps(execution_id: str) -> list[ExecutionStepResponse]:
         db = get_db()
-        cursor = db.execution_steps.find(
-            {"executionId": execution_id}
-        ).sort("createdAt", 1)
+        cursor = db.execution_steps.find({"executionId": execution_id}).sort(
+            "createdAt", 1
+        )
         docs = await cursor.to_list(length=500)
         return [
             ExecutionStepResponse(
-                id=str(d["_id"]),
-                executionId=d["executionId"],
-                taskId=d["taskId"],
-                agentId=d["agentId"],
-                stepType=d["stepType"],
-                content=d["content"],
-                meta=d.get("meta", {}),
-                createdAt=d["createdAt"],
+                id=str(doc["_id"]),
+                executionId=doc["executionId"],
+                taskId=doc["taskId"],
+                agentId=doc["agentId"],
+                stepType=doc["stepType"],
+                content=doc["content"],
+                meta=doc.get("meta", {}),
+                createdAt=doc["createdAt"],
             )
-            for d in docs
+            for doc in docs
         ]
 
     @staticmethod

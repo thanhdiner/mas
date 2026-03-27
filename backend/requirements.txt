@@ -10,3 +10,4 @@ dnspython==2.8.0
 pyjwt>=2.8.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.9
+cloudinary>=1.36.0

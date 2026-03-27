@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.config import get_settings
 from app.database import connect_db, close_db
+from app.errors import register_error_handlers
 from app.routes import (
     agents_router,
     tasks_router,
@@ -24,10 +27,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Multi-Agent System – Orchestration & Management Platform",
+    description="Multi-Agent System - Orchestration & Management Platform",
     version="0.1.0",
     lifespan=lifespan,
 )
+register_error_handlers(app)
 
 # CORS
 app.add_middleware(

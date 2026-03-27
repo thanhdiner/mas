@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
-from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+from fastapi import APIRouter, Query
+
+from app.errors import NotFoundError
+from app.models.agent import AgentCreate, AgentResponse, AgentUpdate
 from app.services.agent_service import AgentService
+from app.utils.object_id import validate_object_id, validate_object_id_list
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
@@ -17,31 +19,33 @@ async def list_agents(
 
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(agent_id: str):
+    validate_object_id(agent_id, "agent_id")
     agent = await AgentService.get_agent(agent_id)
     if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        raise NotFoundError("agent_not_found", "Agent not found")
     return agent
 
 
 @router.post("", response_model=AgentResponse, status_code=201)
 async def create_agent(data: AgentCreate):
-    existing = await AgentService.get_agent_by_name(data.name)
-    if existing:
-        raise HTTPException(status_code=409, detail="Agent with this name already exists")
+    validate_object_id_list(data.allowedSubAgents, "allowedSubAgents")
     return await AgentService.create_agent(data)
 
 
 @router.put("/{agent_id}", response_model=AgentResponse)
 async def update_agent(agent_id: str, data: AgentUpdate):
+    validate_object_id(agent_id, "agent_id")
+    validate_object_id_list(data.allowedSubAgents, "allowedSubAgents")
     agent = await AgentService.update_agent(agent_id, data)
     if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        raise NotFoundError("agent_not_found", "Agent not found")
     return agent
 
 
 @router.delete("/{agent_id}")
 async def delete_agent(agent_id: str):
+    validate_object_id(agent_id, "agent_id")
     deleted = await AgentService.delete_agent(agent_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        raise NotFoundError("agent_not_found", "Agent not found")
     return {"message": "Agent deleted"}

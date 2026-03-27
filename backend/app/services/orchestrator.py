@@ -14,7 +14,6 @@ Safety: tracks delegation depth to prevent infinite loops.
 import json
 import asyncio
 from typing import Optional
-from datetime import datetime, timezone
 from openai import AsyncOpenAI
 
 from app.config import get_settings
@@ -26,7 +25,6 @@ from app.services.execution_service import ExecutionService
 from app.utils.websocket_manager import ws_manager
 
 settings = get_settings()
-openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 DELEGATION_TOOL = {
     "type": "function",
@@ -56,6 +54,19 @@ DELEGATION_TOOL = {
 
 
 class Orchestrator:
+    _openai_client: Optional[AsyncOpenAI] = None
+
+    @staticmethod
+    def _get_openai_client() -> AsyncOpenAI:
+        api_key = (settings.OPENAI_API_KEY or "").strip()
+        if not api_key or api_key == "sk-your-openai-api-key-here":
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+
+        if Orchestrator._openai_client is None:
+            Orchestrator._openai_client = AsyncOpenAI(api_key=api_key)
+
+        return Orchestrator._openai_client
+
     @staticmethod
     async def execute_task(task_id: str, depth: int = 0):
         """Main entry point for executing a task."""
@@ -120,6 +131,7 @@ class Orchestrator:
     @staticmethod
     async def _run_agent(task, agent, execution, depth: int):
         """Run the LLM agent loop."""
+        openai_client = Orchestrator._get_openai_client()
 
         # Build system prompt
         system_msg = agent.systemPrompt + "\n\n"
@@ -188,19 +200,47 @@ class Orchestrator:
 
             # Check for tool calls (delegation)
             if choice.message.tool_calls:
-                for tool_call in choice.message.tool_calls:
-                    if tool_call.function.name == "delegate_to_agent":
-                        args = json.loads(tool_call.function.arguments)
-                        subtask_result = await Orchestrator._handle_delegation(
-                            task, agent, execution, args, depth
-                        )
+                messages.append({
+                    "role": "assistant",
+                    "content": choice.message.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tool_call.id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.function.name,
+                                "arguments": tool_call.function.arguments,
+                            },
+                        }
+                        for tool_call in choice.message.tool_calls
+                    ],
+                })
 
-                        messages.append(choice.message)
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": subtask_result or "Subtask completed but returned no result.",
-                        })
+                for tool_call in choice.message.tool_calls:
+                    if tool_call.function.name != "delegate_to_agent":
+                        tool_result = f"ERROR: Unsupported tool '{tool_call.function.name}'."
+                    else:
+                        try:
+                            args = json.loads(tool_call.function.arguments or "{}")
+                        except json.JSONDecodeError as e:
+                            tool_result = f"ERROR: Invalid tool arguments: {e.msg}"
+                            await ExecutionService.add_step(
+                                execution.id,
+                                task.id,
+                                agent.id,
+                                StepType.ERROR,
+                                tool_result,
+                            )
+                        else:
+                            tool_result = await Orchestrator._handle_delegation(
+                                task, agent, execution, args, depth
+                            )
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": tool_result or "Subtask completed but returned no result.",
+                    })
                 continue
 
             # Final answer

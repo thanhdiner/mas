@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
-from bson import ObjectId
 from typing import Optional
+
+from pymongo.errors import DuplicateKeyError
+
 from app.database import get_db
-from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+from app.errors import DuplicateAgentNameError
+from app.models.agent import AgentCreate, AgentResponse, AgentUpdate
+from app.utils.object_id import to_object_id
 
 
 def _doc_to_response(doc: dict) -> AgentResponse:
@@ -37,7 +41,7 @@ class AgentService:
     @staticmethod
     async def get_agent(agent_id: str) -> Optional[AgentResponse]:
         db = get_db()
-        doc = await db.agents.find_one({"_id": ObjectId(agent_id)})
+        doc = await db.agents.find_one({"_id": to_object_id(agent_id, "agent_id")})
         if not doc:
             return None
         return _doc_to_response(doc)
@@ -59,7 +63,10 @@ class AgentService:
             "createdAt": now,
             "updatedAt": None,
         }
-        result = await db.agents.insert_one(doc)
+        try:
+            result = await db.agents.insert_one(doc)
+        except DuplicateKeyError as exc:
+            raise DuplicateAgentNameError(data.name) from exc
         doc["_id"] = result.inserted_id
         return _doc_to_response(doc)
 
@@ -67,22 +74,27 @@ class AgentService:
     async def update_agent(agent_id: str, data: AgentUpdate) -> Optional[AgentResponse]:
         db = get_db()
         update_data = {
-            k: v for k, v in data.model_dump().items() if v is not None
+            key: value for key, value in data.model_dump().items() if value is not None
         }
         if not update_data:
             return await AgentService.get_agent(agent_id)
 
         update_data["updatedAt"] = datetime.now(timezone.utc)
-        await db.agents.update_one(
-            {"_id": ObjectId(agent_id)},
-            {"$set": update_data},
-        )
+        try:
+            await db.agents.update_one(
+                {"_id": to_object_id(agent_id, "agent_id")},
+                {"$set": update_data},
+            )
+        except DuplicateKeyError as exc:
+            raise DuplicateAgentNameError(update_data.get("name")) from exc
         return await AgentService.get_agent(agent_id)
 
     @staticmethod
     async def delete_agent(agent_id: str) -> bool:
         db = get_db()
-        result = await db.agents.delete_one({"_id": ObjectId(agent_id)})
+        result = await db.agents.delete_one(
+            {"_id": to_object_id(agent_id, "agent_id")}
+        )
         return result.deleted_count > 0
 
     @staticmethod

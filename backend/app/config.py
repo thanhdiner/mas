@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -30,6 +31,27 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+
+    # Cloudinary
+    CLOUDINARY_URL: str = ""
+
+    @field_validator("OPENAI_API_KEY", mode="before")
+    @classmethod
+    def normalize_openai_api_key(cls, value: str) -> str:
+        if value is None:
+            return ""
+
+        normalized = str(value).strip()
+        if normalized == "sk-your-openai-api-key-here":
+            return ""
+        return normalized
+
+    @field_validator("REDIS_URL")
+    @classmethod
+    def validate_redis_url(cls, value: str) -> str:
+        if not value.startswith(("redis://", "rediss://")):
+            raise ValueError("REDIS_URL must start with redis:// or rediss://")
+        return value
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

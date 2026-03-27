@@ -1,11 +1,16 @@
 from datetime import datetime, timezone
-from bson import ObjectId
 from typing import Optional
+
 from app.database import get_db
 from app.models.task import (
-    TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
-    TaskStatus, SubtaskInfo,
+    SubtaskInfo,
+    TaskCreate,
+    TaskDetailResponse,
+    TaskResponse,
+    TaskStatus,
+    TaskUpdate,
 )
+from app.utils.object_id import to_object_id, try_to_object_id
 
 
 def _doc_to_response(doc: dict) -> TaskResponse:
@@ -51,7 +56,7 @@ class TaskService:
     @staticmethod
     async def get_task(task_id: str) -> Optional[TaskResponse]:
         db = get_db()
-        doc = await db.tasks.find_one({"_id": ObjectId(task_id)})
+        doc = await db.tasks.find_one({"_id": to_object_id(task_id, "task_id")})
         if not doc:
             return None
         return _doc_to_response(doc)
@@ -59,33 +64,45 @@ class TaskService:
     @staticmethod
     async def get_task_detail(task_id: str) -> Optional[TaskDetailResponse]:
         db = get_db()
-        doc = await db.tasks.find_one({"_id": ObjectId(task_id)})
+        doc = await db.tasks.find_one({"_id": to_object_id(task_id, "task_id")})
         if not doc:
             return None
 
         base = _doc_to_response(doc)
 
-        # Get agent name
+        # Bad legacy data should not break task detail responses.
         agent_name = None
-        agent_doc = await db.agents.find_one({"_id": ObjectId(doc["assignedAgentId"])})
-        if agent_doc:
-            agent_name = agent_doc["name"]
+        agent_object_id = try_to_object_id(doc.get("assignedAgentId"))
+        if agent_object_id is not None:
+            agent_doc = await db.agents.find_one({"_id": agent_object_id})
+            if agent_doc is not None:
+                agent_name = agent_doc["name"]
 
-        # Get subtasks
         subtask_cursor = db.tasks.find({"parentTaskId": task_id})
         subtask_docs = await subtask_cursor.to_list(length=100)
         subtasks = []
-        for st in subtask_docs:
-            st_agent = await db.agents.find_one({"_id": ObjectId(st["assignedAgentId"])})
-            subtasks.append(SubtaskInfo(
-                id=str(st["_id"]),
-                title=st["title"],
-                status=st.get("status", TaskStatus.QUEUED),
-                assignedAgentId=st["assignedAgentId"],
-                agentName=st_agent["name"] if st_agent else None,
-            ))
+        for subtask_doc in subtask_docs:
+            subtask_agent_name = None
+            subtask_agent_object_id = try_to_object_id(
+                subtask_doc.get("assignedAgentId")
+            )
+            if subtask_agent_object_id is not None:
+                subtask_agent_doc = await db.agents.find_one(
+                    {"_id": subtask_agent_object_id}
+                )
+                if subtask_agent_doc is not None:
+                    subtask_agent_name = subtask_agent_doc["name"]
 
-        # Get latest execution
+            subtasks.append(
+                SubtaskInfo(
+                    id=str(subtask_doc["_id"]),
+                    title=subtask_doc["title"],
+                    status=subtask_doc.get("status", TaskStatus.QUEUED),
+                    assignedAgentId=subtask_doc["assignedAgentId"],
+                    agentName=subtask_agent_name,
+                )
+            )
+
         exec_doc = await db.executions.find_one(
             {"taskId": task_id},
             sort=[("startedAt", -1)],
@@ -98,7 +115,11 @@ class TaskService:
                 "agentId": exec_doc["agentId"],
                 "status": exec_doc["status"],
                 "startedAt": exec_doc["startedAt"].isoformat(),
-                "endedAt": exec_doc["endedAt"].isoformat() if exec_doc.get("endedAt") else None,
+                "endedAt": (
+                    exec_doc["endedAt"].isoformat()
+                    if exec_doc.get("endedAt")
+                    else None
+                ),
             }
 
         return TaskDetailResponse(
@@ -128,18 +149,17 @@ class TaskService:
     async def update_task(task_id: str, data: TaskUpdate) -> Optional[TaskResponse]:
         db = get_db()
         update_data = {
-            k: v for k, v in data.model_dump().items() if v is not None
+            key: value for key, value in data.model_dump().items() if value is not None
         }
         if not update_data:
             return await TaskService.get_task(task_id)
 
-        # Convert enum to value
         if "status" in update_data:
             update_data["status"] = update_data["status"].value
 
         update_data["updatedAt"] = datetime.now(timezone.utc)
         await db.tasks.update_one(
-            {"_id": ObjectId(task_id)},
+            {"_id": to_object_id(task_id, "task_id")},
             {"$set": update_data},
         )
         return await TaskService.get_task(task_id)
@@ -162,7 +182,7 @@ class TaskService:
             update["error"] = error
 
         await db.tasks.update_one(
-            {"_id": ObjectId(task_id)},
+            {"_id": to_object_id(task_id, "task_id")},
             {"$set": update},
         )
         return await TaskService.get_task(task_id)
@@ -179,10 +199,12 @@ class TaskService:
         today_start = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-        return await db.tasks.count_documents({
-            "status": TaskStatus.FAILED.value,
-            "updatedAt": {"$gte": today_start},
-        })
+        return await db.tasks.count_documents(
+            {
+                "status": TaskStatus.FAILED.value,
+                "updatedAt": {"$gte": today_start},
+            }
+        )
 
     @staticmethod
     async def get_recent_activity(limit: int = 20) -> list[dict]:
@@ -193,7 +215,16 @@ class TaskService:
             {
                 "$lookup": {
                     "from": "agents",
-                    "let": {"agentId": {"$toObjectId": "$assignedAgentId"}},
+                    "let": {
+                        "agentId": {
+                            "$convert": {
+                                "input": "$assignedAgentId",
+                                "to": "objectId",
+                                "onError": None,
+                                "onNull": None,
+                            }
+                        }
+                    },
                     "pipeline": [
                         {"$match": {"$expr": {"$eq": ["$_id", "$$agentId"]}}}
                     ],
@@ -224,7 +255,16 @@ class TaskService:
             {
                 "$lookup": {
                     "from": "agents",
-                    "let": {"agentId": {"$toObjectId": "$_id"}},
+                    "let": {
+                        "agentId": {
+                            "$convert": {
+                                "input": "$_id",
+                                "to": "objectId",
+                                "onError": None,
+                                "onNull": None,
+                            }
+                        }
+                    },
                     "pipeline": [
                         {"$match": {"$expr": {"$eq": ["$_id", "$$agentId"]}}}
                     ],
