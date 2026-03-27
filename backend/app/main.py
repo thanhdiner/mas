@@ -16,6 +16,7 @@ from app.routes import (
     tools_router,
     schedules_router,
     playground_router,
+    knowledge_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
 
@@ -57,6 +58,7 @@ app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 app.include_router(tools_router, prefix=settings.API_PREFIX)
 app.include_router(schedules_router, prefix=settings.API_PREFIX)
 app.include_router(playground_router, prefix=settings.API_PREFIX)
+app.include_router(knowledge_router, prefix=settings.API_PREFIX)
 app.include_router(ws_router)
 
 

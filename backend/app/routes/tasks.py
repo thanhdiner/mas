@@ -111,3 +111,62 @@ async def cancel_task(task_id: str):
 
     await TaskService.update_task_status(task_id, TaskStatus.CANCELLED)
     return {"message": "Task cancelled"}
+
+
+@router.post("/{task_id}/approve")
+async def approve_task(task_id: str):
+    """Approve a task that is waiting for human approval."""
+    validate_object_id(task_id, "task_id")
+
+    task = await TaskService.get_task(task_id)
+    if not task:
+        raise NotFoundError("task_not_found", "Task not found")
+    if task.status != TaskStatus.WAITING_APPROVAL:
+        raise BadRequestError(
+            "task_invalid_status",
+            f"Task is not waiting for approval (current: '{task.status}')",
+        )
+
+    await TaskService.update_task_status(task_id, TaskStatus.DONE)
+
+    # Log the approval
+    from app.database import get_db
+    from datetime import datetime, timezone
+    db = get_db()
+    await db.approvals.insert_one({
+        "taskId": task_id,
+        "action": "approved",
+        "reviewedAt": datetime.now(timezone.utc),
+    })
+
+    return {"message": "Task approved", "taskId": task_id}
+
+
+@router.post("/{task_id}/reject")
+async def reject_task(task_id: str, background_tasks: BackgroundTasks):
+    """Reject a task and optionally re-execute with feedback."""
+    validate_object_id(task_id, "task_id")
+
+    task = await TaskService.get_task(task_id)
+    if not task:
+        raise NotFoundError("task_not_found", "Task not found")
+    if task.status != TaskStatus.WAITING_APPROVAL:
+        raise BadRequestError(
+            "task_invalid_status",
+            f"Task is not waiting for approval (current: '{task.status}')",
+        )
+
+    await TaskService.update_task_status(
+        task_id, TaskStatus.FAILED, error="Rejected by human reviewer"
+    )
+
+    from app.database import get_db
+    from datetime import datetime, timezone
+    db = get_db()
+    await db.approvals.insert_one({
+        "taskId": task_id,
+        "action": "rejected",
+        "reviewedAt": datetime.now(timezone.utc),
+    })
+
+    return {"message": "Task rejected", "taskId": task_id}

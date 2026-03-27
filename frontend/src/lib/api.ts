@@ -272,6 +272,14 @@ export const api = {
       fetchAPI<{ message: string }>(`/tasks/${id}/cancel`, {
         method: "POST",
       }),
+    approve: (id: string) =>
+      fetchAPI<{ message: string; taskId: string }>(`/tasks/${id}/approve`, {
+        method: "POST",
+      }),
+    reject: (id: string) =>
+      fetchAPI<{ message: string; taskId: string }>(`/tasks/${id}/reject`, {
+        method: "POST",
+      }),
   },
   executions: {
     get: (id: string) => fetchAPI<Execution>(`/executions/${id}`),
@@ -388,6 +396,31 @@ export const api = {
         body: JSON.stringify({ agentId, messages }),
       }),
   },
+
+  knowledge: {
+    list: () => fetchAPI<KnowledgeDoc[]>("/knowledge"),
+    get: (id: string) => fetchAPI<KnowledgeDoc & { textPreview: string }>(`/knowledge/${id}`),
+    upload: async (file: File, name?: string, description?: string, tags?: string): Promise<any> => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("mas_token") : null;
+      const formData = new FormData();
+      formData.append("file", file);
+      if (name) formData.append("name", name);
+      if (description) formData.append("description", description);
+      if (tags) formData.append("tags", tags);
+      const res = await fetch(`${API_BASE}/knowledge/upload`, {
+        method: "POST",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Upload failed");
+      }
+      return res.json();
+    },
+    delete: (id: string) => fetchAPI<{ message: string }>(`/knowledge/${id}`, { method: "DELETE" }),
+    search: (q: string) => fetchAPI<{ id: string; name: string; snippet: string }[]>(`/knowledge/search/query?q=${encodeURIComponent(q)}`),
+  },
 };
 
 // ─── Schedule Types ──────────────────────────────────────────────────
@@ -441,4 +474,15 @@ export interface AnalyticsData {
     successRate: number;
   }[];
   schedules: { total: number; active: number };
+}
+
+export interface KnowledgeDoc {
+  id: string;
+  name: string;
+  filename: string;
+  description: string;
+  fileSize: number;
+  fileType: string;
+  tags: string[];
+  uploadedAt: string;
 }

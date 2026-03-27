@@ -22,6 +22,7 @@ async def connect_db():
     await db.approvals.create_index("taskId")
     await db.tool_settings.create_index("name", unique=True)
     await db.schedules.create_index("isActive")
+    await db.knowledge.create_index("name")
 
     print(f"Connected to MongoDB: {settings.MONGODB_DB}")
 

@@ -12,6 +12,8 @@ import {
   Wrench,
   Clock,
   MessageSquare,
+  ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -47,9 +49,19 @@ const navGroups = [
     icon: Clock,
   },
   {
+    href: "/approvals",
+    label: "Approvals",
+    icon: ShieldCheck,
+  },
+  {
     href: "/playground",
     label: "Playground",
     icon: MessageSquare,
+  },
+  {
+    href: "/knowledge",
+    label: "Knowledge Base",
+    icon: BookOpen,
   },
 ];
 
