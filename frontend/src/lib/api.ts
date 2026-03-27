@@ -358,4 +358,57 @@ export const api = {
         body: JSON.stringify(settings)
       }),
   },
+
+  schedules: {
+    list: () => fetchAPI<Schedule[]>("/schedules"),
+    get: (id: string) => fetchAPI<Schedule>(`/schedules/${id}`),
+    create: (data: ScheduleCreate) =>
+      fetchAPI<Schedule>("/schedules", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<ScheduleCreate>) =>
+      fetchAPI<Schedule>(`/schedules/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchAPI<void>(`/schedules/${id}`, { method: "DELETE" }),
+    toggle: (id: string, active: boolean) =>
+      fetchAPI<Schedule>(`/schedules/${id}/toggle?active=${active}`, {
+        method: "POST",
+      }),
+  },
 };
+
+// ─── Schedule Types ──────────────────────────────────────────────────
+export interface Schedule {
+  id: string;
+  name: string;
+  agentId: string;
+  agentName?: string;
+  promptPayload: string;
+  scheduleType: "cron" | "interval" | "once";
+  cronExpression?: string;
+  intervalSeconds?: number;
+  runAt?: string;
+  timezone: string;
+  isActive: boolean;
+  lastRunAt?: string;
+  nextRunAt?: string;
+  totalRuns: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ScheduleCreate {
+  name: string;
+  agentId: string;
+  promptPayload: string;
+  scheduleType: "cron" | "interval" | "once";
+  cronExpression?: string;
+  intervalSeconds?: number;
+  runAt?: string;
+  timezone?: string;
+  isActive?: boolean;
+}

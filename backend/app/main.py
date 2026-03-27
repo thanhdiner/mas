@@ -14,7 +14,9 @@ from app.routes import (
     ws_router,
     auth_router,
     tools_router,
+    schedules_router,
 )
+from app.services.scheduler import start_scheduler, stop_scheduler
 
 settings = get_settings()
 
@@ -22,7 +24,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_db()
+    await start_scheduler()
     yield
+    stop_scheduler()
     await close_db()
 
 
@@ -50,6 +54,7 @@ app.include_router(executions_router, prefix=settings.API_PREFIX)
 app.include_router(auth_router, prefix=settings.API_PREFIX + "/auth")
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 app.include_router(tools_router, prefix=settings.API_PREFIX)
+app.include_router(schedules_router, prefix=settings.API_PREFIX)
 app.include_router(ws_router)
 
 
@@ -65,3 +70,4 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
