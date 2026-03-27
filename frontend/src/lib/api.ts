@@ -343,5 +343,9 @@ export const api = {
       }
     },
   },
+
+  tools: {
+    list: () => fetchAPI<{ name: string; description: string }[]>("/tools"),
+  },
 };
 

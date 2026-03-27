@@ -4,3 +4,4 @@ from app.routes.executions import router as executions_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.ws import router as ws_router
 from app.routes.auth import router as auth_router
+from app.routes.tools import router as tools_router

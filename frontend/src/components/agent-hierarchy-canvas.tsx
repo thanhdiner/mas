@@ -394,6 +394,74 @@ function N8nNode({ data }: NodeProps<Node<AgentNodeData>>) {
 const nodeTypes: NodeTypes = { n8nNode: N8nNode };
 
 /* ======================================================================
+   TOOL PICKER — interactive tool toggle for agents
+   ====================================================================== */
+const TOOL_ICONS: Record<string, string> = {
+  web_search: "🌐",
+  read_website: "📖",
+  execute_code: "💻",
+  write_file: "💾",
+};
+
+function ToolPicker({ agent, onAgentUpdated }: { agent: Agent; onAgentUpdated: (a: Agent) => void }) {
+  const [catalog, setCatalog] = useState<{ name: string; description: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.tools.list().then(setCatalog).catch(() => {});
+  }, []);
+
+  const toggle = async (toolName: string) => {
+    const has = agent.allowedTools.includes(toolName);
+    const next = has ? agent.allowedTools.filter((t) => t !== toolName) : [...agent.allowedTools, toolName];
+    setSaving(true);
+    try {
+      const updated = await api.agents.update(agent.id, { allowedTools: next });
+      onAgentUpdated(updated);
+    } catch {}
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <label className="text-[9px] uppercase tracking-wider font-medium mb-1.5 block" style={{ color: "rgba(232,234,237,0.35)" }}>
+        Tools ({agent.allowedTools.length}/{catalog.length})
+        {saving && <span className="ml-1 text-[8px]" style={{ color: "#7bd0ff" }}>saving…</span>}
+      </label>
+      <div className="space-y-1">
+        {catalog.map((tool) => {
+          const active = agent.allowedTools.includes(tool.name);
+          return (
+            <button key={tool.name} onClick={() => toggle(tool.name)}
+              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all"
+              style={{
+                background: active ? "rgba(78,222,163,0.1)" : "rgba(255,255,255,0.02)",
+                border: `1px solid ${active ? "rgba(78,222,163,0.25)" : "rgba(255,255,255,0.04)"}`,
+              }}>
+              <span className="text-sm">{TOOL_ICONS[tool.name] ?? "🔧"}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium" style={{ color: active ? "#4edea3" : "#e8eaed" }}>{tool.name}</p>
+                <p className="text-[8px] truncate" style={{ color: "rgba(232,234,237,0.35)" }}>{tool.description.slice(0, 60)}…</p>
+              </div>
+              <div className="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0"
+                style={{
+                  borderColor: active ? "#4edea3" : "rgba(255,255,255,0.15)",
+                  background: active ? "#4edea3" : "transparent",
+                }}>
+                {active && <span className="text-[8px] text-white font-bold">✓</span>}
+              </div>
+            </button>
+          );
+        })}
+        {catalog.length === 0 && (
+          <p className="text-[10px]" style={{ color: "rgba(232,234,237,0.3)" }}>Loading tools…</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ======================================================================
    SIDEBAR INSPECTOR — n8n-style tabbed config panel
    ====================================================================== */
 type SidebarTab = "settings" | "connections";
@@ -561,21 +629,8 @@ function SidebarInspector({
                 </button>
               </div>
 
-              {/* Tools */}
-              <div>
-                <label className={LABEL_CLS} style={LABEL_STYLE}>Tools ({agent.allowedTools.length})</label>
-                {agent.allowedTools.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {agent.allowedTools.map((t) => (
-                      <span key={t} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-                        style={{ background: "rgba(123,208,255,0.1)", color: "#7bd0ff" }}
-                      >{t}</span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[10px]" style={{ color: "rgba(232,234,237,0.3)" }}>No tools configured</p>
-                )}
-              </div>
+              {/* Tools picker */}
+              <ToolPicker agent={agent} onAgentUpdated={onAgentUpdated} />
 
               <div className="h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
 
@@ -777,6 +832,13 @@ export function AgentHierarchyCanvas() {
                 case "execution_failed":
                   addLog(`✗ Execution failed: ${msg.error}`, "error");
                   setIsExecuting(false);
+                  break;
+                case "tool_call":
+                  if (msg.agentId) setNodeExecState(msg.agentId, "running");
+                  addLog(`[${msg.agentName}] 🔧 ${msg.tool}(${Object.values(msg.args || {}).map((v: unknown) => String(v).slice(0, 30)).join(", ")})`, "step");
+                  break;
+                case "tool_result":
+                  addLog(`[${msg.agentName}] ← ${msg.tool}: ${(msg.content || "").slice(0, 100)}`, "done");
                   break;
                 case "waiting_approval":
                   if (msg.agentId) setNodeExecState(msg.agentId, "waiting");

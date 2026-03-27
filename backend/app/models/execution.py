@@ -14,6 +14,7 @@ class ExecutionStatus(str, Enum):
 class StepType(str, Enum):
     THINKING = "thinking"
     ACTION = "action"
+    TOOL_CALL = "tool_call"
     DELEGATION = "delegation"
     RESULT = "result"
     ERROR = "error"

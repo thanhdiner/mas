@@ -5,8 +5,9 @@ Responsibilities:
   1. Read task
   2. Decide solve-or-delegate via LLM
   3. Create subtask if delegating
-  4. Wait / collect subtask result
-  5. Finalize parent task
+  4. Execute real tools (web_search, read_website, execute_code, write_file)
+  5. Wait / collect subtask result
+  6. Finalize parent task
 
 Safety: tracks delegation depth to prevent infinite loops.
 """
@@ -23,6 +24,7 @@ from app.services.agent_service import AgentService
 from app.services.task_service import TaskService
 from app.services.execution_service import ExecutionService
 from app.utils.websocket_manager import ws_manager
+from app.tools.registry import tool_registry
 
 settings = get_settings()
 
@@ -175,8 +177,10 @@ class Orchestrator:
             "content": f"Agent '{agent.name}' is analyzing the task...",
         })
 
-        # Prepare tools
+        # Prepare tools — real tools from registry + delegation
         tools = []
+        if agent.allowedTools:
+            tools.extend(tool_registry.get_openai_tools(agent.allowedTools))
         if agent.allowedSubAgents and task.allowDelegation:
             tools.append(DELEGATION_TOOL)
 
@@ -199,7 +203,7 @@ class Orchestrator:
             response = await openai_client.chat.completions.create(**call_kwargs)
             choice = response.choices[0]
 
-            # Check for tool calls (delegation)
+            # Check for tool calls (delegation OR real tools)
             if choice.message.tool_calls:
                 messages.append({
                     "role": "assistant",
@@ -218,29 +222,77 @@ class Orchestrator:
                 })
 
                 for tool_call in choice.message.tool_calls:
-                    if tool_call.function.name != "delegate_to_agent":
-                        tool_result = f"ERROR: Unsupported tool '{tool_call.function.name}'."
+                    fn_name = tool_call.function.name
+
+                    try:
+                        args = json.loads(tool_call.function.arguments or "{}")
+                    except json.JSONDecodeError as e:
+                        tool_result = f"ERROR: Invalid tool arguments: {e.msg}"
+                        await ExecutionService.add_step(
+                            execution.id, task.id, agent.id,
+                            StepType.ERROR, tool_result,
+                        )
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": tool_result,
+                        })
+                        continue
+
+                    if fn_name == "delegate_to_agent":
+                        # Delegation — existing logic
+                        tool_result = await Orchestrator._handle_delegation(
+                            task, agent, execution, args, depth
+                        )
                     else:
-                        try:
-                            args = json.loads(tool_call.function.arguments or "{}")
-                        except json.JSONDecodeError as e:
-                            tool_result = f"ERROR: Invalid tool arguments: {e.msg}"
-                            await ExecutionService.add_step(
-                                execution.id,
-                                task.id,
-                                agent.id,
-                                StepType.ERROR,
-                                tool_result,
-                            )
+                        # Real tool execution
+                        handler = tool_registry.get_handler(fn_name)
+                        if handler is None:
+                            tool_result = f"ERROR: Unknown tool '{fn_name}'."
                         else:
-                            tool_result = await Orchestrator._handle_delegation(
-                                task, agent, execution, args, depth
+                            # Log tool call start
+                            args_summary = ", ".join(f"{k}={repr(v)[:60]}" for k, v in args.items())
+                            await ExecutionService.add_step(
+                                execution.id, task.id, agent.id,
+                                StepType.TOOL_CALL,
+                                f"Calling {fn_name}({args_summary})",
+                                meta={"tool": fn_name, "args": args},
                             )
+                            await ws_manager.broadcast(execution.id, {
+                                "type": "tool_call",
+                                "agentId": agent.id,
+                                "agentName": agent.name,
+                                "tool": fn_name,
+                                "args": args,
+                                "content": f"Calling {fn_name}({args_summary})",
+                            })
+
+                            # Execute the real tool handler
+                            try:
+                                tool_result = await handler(**args)
+                            except Exception as exc:
+                                tool_result = f"Tool execution error: {exc}"
+
+                            # Log tool result
+                            result_preview = (tool_result or "")[:500]
+                            await ExecutionService.add_step(
+                                execution.id, task.id, agent.id,
+                                StepType.TOOL_CALL,
+                                f"[{fn_name} result] {result_preview}",
+                                meta={"tool": fn_name, "resultLength": len(tool_result or "")},
+                            )
+                            await ws_manager.broadcast(execution.id, {
+                                "type": "tool_result",
+                                "agentId": agent.id,
+                                "agentName": agent.name,
+                                "tool": fn_name,
+                                "content": result_preview,
+                            })
 
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
-                        "content": tool_result or "Subtask completed but returned no result.",
+                        "content": tool_result or "Tool completed but returned no result.",
                     })
                 continue
 

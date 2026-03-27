@@ -13,6 +13,7 @@ from app.routes import (
     dashboard_router,
     ws_router,
     auth_router,
+    tools_router,
 )
 
 settings = get_settings()
@@ -48,6 +49,7 @@ app.include_router(tasks_router, prefix=settings.API_PREFIX)
 app.include_router(executions_router, prefix=settings.API_PREFIX)
 app.include_router(auth_router, prefix=settings.API_PREFIX + "/auth")
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
+app.include_router(tools_router, prefix=settings.API_PREFIX)
 app.include_router(ws_router)
 
 
