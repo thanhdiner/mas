@@ -31,3 +31,6 @@ tmp/
 *.log
 *.bak
 dump.rdb
+
+# AI Agent Rules
+.agent/rules/
