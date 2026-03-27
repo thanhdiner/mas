@@ -269,7 +269,18 @@ class Orchestrator:
 
                             # Execute the real tool handler
                             try:
-                                tool_result = await handler(**args)
+                                # Fetch global config from DB
+                                from app.database import get_db
+                                current_db = get_db()
+                                global_settings_doc = await current_db.tool_settings.find_one({"name": fn_name}) if current_db is not None else {}
+                                global_settings = (global_settings_doc or {}).get("settings", {})
+
+                                # Inject configuration from Agent's toolConfig (acts as default/overrides)
+                                agent_tool_config = getattr(agent, "toolConfig", {}).get(fn_name, {})
+                                
+                                # Merge order: Global Config -> Agent Config -> LLM args
+                                combined_args = {**global_settings, **agent_tool_config, **args}
+                                tool_result = await handler(**combined_args)
                             except Exception as exc:
                                 tool_result = f"Tool execution error: {exc}"
 

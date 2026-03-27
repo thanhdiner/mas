@@ -25,7 +25,11 @@ TIMEOUT_SECONDS = 15
 MAX_OUTPUT_CHARS = 5000
 
 
-async def _handle(code: str, **_) -> str:
+async def _handle(code: str, **kwargs) -> str:
+    # Read configurable limits (these will be injected by Orchestrator if set by user)
+    timeout = kwargs.get("timeout_seconds", TIMEOUT_SECONDS)
+    max_output = kwargs.get("max_output_chars", MAX_OUTPUT_CHARS)
+
     # Write code to a temp file
     try:
         with tempfile.NamedTemporaryFile(
@@ -46,11 +50,14 @@ async def _handle(code: str, **_) -> str:
 
         try:
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=TIMEOUT_SECONDS
+                proc.communicate(), timeout=timeout
             )
         except asyncio.TimeoutError:
-            proc.kill()
-            return f"Code execution timed out after {TIMEOUT_SECONDS}s."
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            return f"Code execution timed out after {timeout}s."
 
         output = ""
         if stdout:
@@ -62,8 +69,8 @@ async def _handle(code: str, **_) -> str:
         if not output:
             output = "(No output produced)"
 
-        if len(output) > MAX_OUTPUT_CHARS:
-            output = output[:MAX_OUTPUT_CHARS] + "\n...[truncated]"
+        if len(output) > max_output:
+            output = output[:max_output] + "\n...[truncated]"
 
         return_code = proc.returncode
         if return_code != 0:
@@ -85,4 +92,20 @@ tool_registry.register(
     description="Execute Python code and return the output. Use this for calculations, data processing, generating charts, or any task that benefits from running actual code. The code runs in a sandboxed environment with a 15-second timeout.",
     parameters=PARAMS,
     handler=_handle,
+    config_schema=[
+        {
+            "name": "timeout_seconds",
+            "type": "number",
+            "label": "Timeout (seconds)",
+            "description": "Maximum allowed execution time before the script is killed.",
+            "default": 15,
+        },
+        {
+            "name": "max_output_chars",
+            "type": "number",
+            "label": "Max Output Characters",
+            "description": "Maximum characters of stdout/stderr to return to the agent.",
+            "default": 3000,
+        }
+    ]
 )

@@ -403,20 +403,56 @@ const TOOL_ICONS: Record<string, string> = {
   write_file: "💾",
 };
 
+interface ToolConfigSchema {
+  name: string;
+  type: "string" | "number";
+  label: string;
+  description: string;
+  default: any;
+}
+
+interface ToolCatalogItem {
+  name: string;
+  description: string;
+  configSchema?: ToolConfigSchema[];
+}
+
 function ToolPicker({ agent, onAgentUpdated }: { agent: Agent; onAgentUpdated: (a: Agent) => void }) {
-  const [catalog, setCatalog] = useState<{ name: string; description: string }[]>([]);
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [expandedSettings, setExpandedSettings] = useState<string | null>(null);
 
   useEffect(() => {
-    api.tools.list().then(setCatalog).catch(() => {});
+    api.tools.list().then(setCatalog as any).catch(() => {});
   }, []);
 
   const toggle = async (toolName: string) => {
     const has = agent.allowedTools.includes(toolName);
     const next = has ? agent.allowedTools.filter((t) => t !== toolName) : [...agent.allowedTools, toolName];
+    
+    // Automatically open settings if the tool has config and is being enabled
+    if (!has && catalog.find(t => t.name === toolName)?.configSchema?.length) {
+      setExpandedSettings(toolName);
+    } else if (has && expandedSettings === toolName) {
+      setExpandedSettings(null);
+    }
+
     setSaving(true);
     try {
       const updated = await api.agents.update(agent.id, { allowedTools: next });
+      onAgentUpdated(updated);
+    } catch {}
+    setSaving(false);
+  };
+
+  const updateConfig = async (toolName: string, configKey: string, value: any) => {
+    const currentConfig = agent.toolConfig || {};
+    const toolConf = currentConfig[toolName] || {};
+    const nextConfig = { ...currentConfig, [toolName]: { ...toolConf, [configKey]: value } };
+
+    setSaving(true);
+    try {
+      const updated = await api.agents.update(agent.id, { toolConfig: nextConfig });
       onAgentUpdated(updated);
     } catch {}
     setSaving(false);
@@ -431,26 +467,71 @@ function ToolPicker({ agent, onAgentUpdated }: { agent: Agent; onAgentUpdated: (
       <div className="space-y-1">
         {catalog.map((tool) => {
           const active = agent.allowedTools.includes(tool.name);
+          const hasConfig = tool.configSchema && tool.configSchema.length > 0;
+          const isExpanded = expandedSettings === tool.name;
+
           return (
-            <button key={tool.name} onClick={() => toggle(tool.name)}
-              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all"
-              style={{
-                background: active ? "rgba(78,222,163,0.1)" : "rgba(255,255,255,0.02)",
-                border: `1px solid ${active ? "rgba(78,222,163,0.25)" : "rgba(255,255,255,0.04)"}`,
-              }}>
-              <span className="text-sm">{TOOL_ICONS[tool.name] ?? "🔧"}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-medium" style={{ color: active ? "#4edea3" : "#e8eaed" }}>{tool.name}</p>
-                <p className="text-[8px] truncate" style={{ color: "rgba(232,234,237,0.35)" }}>{tool.description.slice(0, 60)}…</p>
+            <div key={tool.name} className="flex flex-col rounded-lg transition-all"
+                 style={{
+                   background: active ? "rgba(78,222,163,0.05)" : "rgba(255,255,255,0.02)",
+                   border: `1px solid ${active ? "rgba(78,222,163,0.25)" : "rgba(255,255,255,0.04)"}`,
+                 }}>
+              
+              <div className="flex items-center group w-full px-2.5 py-2">
+                <button onClick={() => toggle(tool.name)} className="flex items-center gap-2 flex-1 text-left min-w-0">
+                  <span className="text-sm shrink-0">{TOOL_ICONS[tool.name] ?? "🔧"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium" style={{ color: active ? "#4edea3" : "#e8eaed" }}>{tool.name}</p>
+                    <p className="text-[8px] truncate" style={{ color: "rgba(232,234,237,0.35)" }}>{tool.description}</p>
+                  </div>
+                </button>
+                
+                {active && hasConfig && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setExpandedSettings(isExpanded ? null : tool.name); }}
+                    className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors hover:bg-white/10 shrink-0"
+                    style={{ color: isExpanded ? "#7bd0ff" : "rgba(232,234,237,0.5)", background: isExpanded ? "rgba(123,208,255,0.1)" : "transparent" }}
+                  >
+                    Setup
+                  </button>
+                )}
+                
+                <button onClick={() => toggle(tool.name)} className="ml-2 w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0"
+                  style={{
+                    borderColor: active ? "#4edea3" : "rgba(255,255,255,0.15)",
+                    background: active ? "#4edea3" : "transparent",
+                  }}>
+                  {active && <span className="text-[8px] text-white font-bold">✓</span>}
+                </button>
               </div>
-              <div className="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0"
-                style={{
-                  borderColor: active ? "#4edea3" : "rgba(255,255,255,0.15)",
-                  background: active ? "#4edea3" : "transparent",
-                }}>
-                {active && <span className="text-[8px] text-white font-bold">✓</span>}
-              </div>
-            </button>
+
+              {/* Configuration Panel */}
+              {active && isExpanded && hasConfig && (
+                <div className="px-2.5 pb-2.5 pt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                  <div className="space-y-2 mt-1">
+                    {tool.configSchema!.map((field) => {
+                      const currentValue = agent.toolConfig?.[tool.name]?.[field.name] ?? field.default;
+                      return (
+                        <div key={field.name}>
+                          <label className="text-[9px] mb-0.5 block" style={{ color: "rgba(232,234,237,0.6)" }}>
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type === "number" ? "number" : "text"}
+                            value={currentValue}
+                            onChange={(e) => updateConfig(tool.name, field.name, field.type === "number" ? Number(e.target.value) : e.target.value)}
+                            onBlur={(e) => updateConfig(tool.name, field.name, field.type === "number" ? Number(e.target.value) : e.target.value)}
+                            placeholder={String(field.default)}
+                            className="w-full text-[10px] bg-transparent border rounded px-1.5 py-1 outline-none focus:border-[#7bd0ff] transition-colors"
+                            style={{ borderColor: "rgba(255,255,255,0.1)", color: "#e8eaed" }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
         {catalog.length === 0 && (

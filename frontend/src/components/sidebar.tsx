@@ -9,6 +9,7 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  Wrench,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -32,6 +33,11 @@ const navGroups = [
       { href: "/tasks", label: "All Tasks" },
       { href: "/tasks/new", label: "New Task" },
     ]
+  },
+  {
+    href: "/tools",
+    label: "Tools Library",
+    icon: Wrench,
   },
 ];
 

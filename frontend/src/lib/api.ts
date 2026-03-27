@@ -41,11 +41,12 @@ export interface Agent {
   description: string;
   systemPrompt: string;
   allowedTools: string[];
+  toolConfig?: Record<string, Record<string, any>>;
   allowedSubAgents: string[];
   maxSteps: number;
   active: boolean;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string | null;
 }
 
 export interface Task {
@@ -345,7 +346,16 @@ export const api = {
   },
 
   tools: {
-    list: () => fetchAPI<{ name: string; description: string }[]>("/tools"),
+    list: () => fetchAPI<{ 
+      name: string; 
+      description: string;
+      configSchema?: { name: string; type: "string" | "number"; label: string; description: string; default: any }[];
+      globalSettings?: Record<string, any>;
+    }[]>("/tools"),
+    updateSettings: (toolName: string, settings: Record<string, any>) => 
+      fetchAPI<any>(`/tools/${toolName}/settings`, {
+        method: "PATCH",
+        body: JSON.stringify(settings)
+      }),
   },
 };
-

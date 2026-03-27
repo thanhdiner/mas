@@ -20,11 +20,12 @@ ToolHandler = Callable[..., Awaitable[str]]
 class _ToolEntry:
     """Internal record for a registered tool."""
 
-    def __init__(self, name: str, description: str, schema: dict, handler: ToolHandler):
+    def __init__(self, name: str, description: str, schema: dict, handler: ToolHandler, config_schema: list[dict]):
         self.name = name
         self.description = description
         self.schema = schema  # OpenAI function-calling 'parameters' dict
         self.handler = handler
+        self.config_schema = config_schema
 
     def to_openai_tool(self) -> dict:
         """Return the tool in OpenAI function-calling format."""
@@ -44,9 +45,9 @@ class ToolRegistry:
     def __init__(self):
         self._tools: dict[str, _ToolEntry] = {}
 
-    def register(self, name: str, description: str, parameters: dict, handler: ToolHandler):
+    def register(self, name: str, description: str, parameters: dict, handler: ToolHandler, config_schema: list[dict] = None):
         """Register a new tool."""
-        self._tools[name] = _ToolEntry(name, description, parameters, handler)
+        self._tools[name] = _ToolEntry(name, description, parameters, handler, config_schema or [])
 
     def get_handler(self, name: str) -> ToolHandler | None:
         entry = self._tools.get(name)
@@ -60,10 +61,10 @@ class ToolRegistry:
             if name in self._tools
         ]
 
-    def list_all(self) -> list[dict[str, str]]:
+    def list_all(self) -> list[dict[str, Any]]:
         """Return metadata for every registered tool (for frontend catalog)."""
         return [
-            {"name": e.name, "description": e.description}
+            {"name": e.name, "description": e.description, "configSchema": e.config_schema}
             for e in self._tools.values()
         ]
 

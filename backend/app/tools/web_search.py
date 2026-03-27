@@ -66,4 +66,20 @@ tool_registry.register(
     description="Search the internet using DuckDuckGo. Returns titles, URLs, and snippets. Use this when you need current information, facts, or data that may not be in your training data.",
     parameters=PARAMS,
     handler=_handle,
+    config_schema=[
+        {
+            "name": "region",
+            "type": "string",
+            "label": "Region",
+            "description": "Region code for search results (e.g., 'wt-wt' for worldwide, 'us-en' for US English).",
+            "default": "wt-wt",
+        },
+        {
+            "name": "max_results_limit",
+            "type": "number",
+            "label": "Max Results Limit",
+            "description": "Hard limit on how many results the agent is allowed to request.",
+            "default": 10,
+        }
+    ]
 )
