@@ -286,6 +286,7 @@ export const api = {
       fetchAPI<ActivityItem[]>(`/dashboard/activity?limit=${limit}`),
     topAgents: (limit = 5) =>
       fetchAPI<TopAgent[]>(`/dashboard/top-agents?limit=${limit}`),
+    analytics: () => fetchAPI<AnalyticsData>("/dashboard/analytics"),
   },
   auth: {
     login: async (email: string, password: string) => {
@@ -379,6 +380,14 @@ export const api = {
         method: "POST",
       }),
   },
+
+  playground: {
+    chat: (agentId: string, messages: { role: string; content: string }[]) =>
+      fetchAPI<PlaygroundResponse>("/playground/chat", {
+        method: "POST",
+        body: JSON.stringify({ agentId, messages }),
+      }),
+  },
 };
 
 // ─── Schedule Types ──────────────────────────────────────────────────
@@ -411,4 +420,25 @@ export interface ScheduleCreate {
   runAt?: string;
   timezone?: string;
   isActive?: boolean;
+}
+
+export interface PlaygroundResponse {
+  role: string;
+  content: string;
+  toolCalls: { name: string; arguments: string; id: string }[];
+  usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+}
+
+export interface AnalyticsData {
+  statusBreakdown: Record<string, number>;
+  dailyTasks: { date: string; count: number }[];
+  agentPerformance: {
+    agentId: string;
+    agentName: string;
+    total: number;
+    completed: number;
+    failed: number;
+    successRate: number;
+  }[];
+  schedules: { total: number; active: number };
 }

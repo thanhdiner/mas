@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Wrench,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -44,6 +45,11 @@ const navGroups = [
     href: "/schedules",
     label: "Schedules",
     icon: Clock,
+  },
+  {
+    href: "/playground",
+    label: "Playground",
+    icon: MessageSquare,
   },
 ];
 

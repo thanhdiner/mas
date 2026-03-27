@@ -6,3 +6,4 @@ from app.routes.ws import router as ws_router
 from app.routes.auth import router as auth_router
 from app.routes.tools import router as tools_router
 from app.routes.schedules import router as schedules_router
+from app.routes.playground import router as playground_router

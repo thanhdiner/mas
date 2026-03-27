@@ -15,6 +15,7 @@ from app.routes import (
     auth_router,
     tools_router,
     schedules_router,
+    playground_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
 
@@ -55,6 +56,7 @@ app.include_router(auth_router, prefix=settings.API_PREFIX + "/auth")
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 app.include_router(tools_router, prefix=settings.API_PREFIX)
 app.include_router(schedules_router, prefix=settings.API_PREFIX)
+app.include_router(playground_router, prefix=settings.API_PREFIX)
 app.include_router(ws_router)
 
 
