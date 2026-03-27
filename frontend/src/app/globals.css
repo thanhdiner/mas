@@ -1,0 +1,230 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Design System: "The Synthetic Intelligence Interface"
+ * Palette from DESIGN.md - deep obsidian + high-chroma accents
+ * Fonts: Space Grotesk (headlines) + Inter (body/data) */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-heading);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Custom design tokens */
+  --color-surface-lowest: var(--surface-lowest);
+  --color-surface-low: var(--surface-low);
+  --color-surface-base: var(--surface-base);
+  --color-surface-container: var(--surface-container);
+  --color-surface-high: var(--surface-high);
+  --color-surface-highest: var(--surface-highest);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-blue: var(--accent-blue);
+  --color-on-surface-dim: var(--on-surface-dim);
+}
+
+/* Dark mode is the primary mode per DESIGN.md */
+:root {
+  --font-heading: "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  /* Surface hierarchy from DESIGN.md */
+  --surface-lowest: #060e20;
+  --surface-low: #131b2e;
+  --surface-base: #0b1326;
+  --surface-container: #171f33;
+  --surface-high: #222a3d;
+  --surface-highest: #2d3449;
+
+  /* Accent colors */
+  --accent-cyan: #7bd0ff;
+  --accent-teal: #4edea3;
+  --accent-blue: #008abb;
+  --on-surface-dim: #8c92a4;
+
+  /* shadcn variable mapping -> design system */
+  --background: #0b1326;
+  --foreground: #e2e4ea;
+  --card: #171f33;
+  --card-foreground: #e2e4ea;
+  --popover: #222a3d;
+  --popover-foreground: #e2e4ea;
+  --primary: #7bd0ff;
+  --primary-foreground: #060e20;
+  --secondary: #222a3d;
+  --secondary-foreground: #e2e4ea;
+  --muted: #131b2e;
+  --muted-foreground: #8c92a4;
+  --accent: #2d3449;
+  --accent-foreground: #e2e4ea;
+  --destructive: #ffb4ab;
+  --border: rgba(69, 70, 77, 0.15);
+  --input: #222a3d;
+  --ring: #7bd0ff;
+  --chart-1: #7bd0ff;
+  --chart-2: #4edea3;
+  --chart-3: #008abb;
+  --chart-4: #ffb4ab;
+  --chart-5: #2d3449;
+  --radius: 0.5rem;
+
+  --sidebar: #131b2e;
+  --sidebar-foreground: #e2e4ea;
+  --sidebar-primary: #7bd0ff;
+  --sidebar-primary-foreground: #060e20;
+  --sidebar-accent: #222a3d;
+  --sidebar-accent-foreground: #e2e4ea;
+  --sidebar-border: rgba(69, 70, 77, 0.15);
+  --sidebar-ring: #7bd0ff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Custom utility classes from design system */
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  .gradient-primary {
+    background: linear-gradient(135deg, #7bd0ff 0%, #008abb 100%);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #7bd0ff 0%, #008abb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .glass {
+    background: rgba(45, 52, 73, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-subtle {
+    background: rgba(34, 42, 61, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .surface-inset {
+    background: #060e20;
+  }
+  .ghost-line {
+    background: rgba(69, 70, 77, 0.1);
+  }
+  .ambient-shadow {
+    box-shadow: 0 16px 32px rgba(6, 14, 32, 0.06);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .status-dot-running {
+    background: #7bd0ff;
+    box-shadow: 0 0 8px rgba(123, 208, 255, 0.5);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .status-dot-done {
+    background: #4edea3;
+    box-shadow: 0 0 8px rgba(78, 222, 163, 0.5);
+  }
+  .status-dot-failed {
+    background: #ffb4ab;
+    box-shadow: 0 0 8px rgba(255, 180, 171, 0.5);
+  }
+  .status-dot-queued {
+    background: #8c92a4;
+  }
+  .status-dot-waiting {
+    background: #f0c674;
+    box-shadow: 0 0 8px rgba(240, 198, 116, 0.5);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .status-dot-cancelled {
+    background: #6b7280;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 146, 164, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 146, 164, 0.5);
+}
