@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, Save, Settings2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Save, Settings2 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -329,6 +329,9 @@ export default function AgentFormPage() {
     Record<string, Record<string, unknown>>
   >({});
   const [toolConfigForms, setToolConfigForms] = useState<ToolConfigFormState>({});
+  const [expandedOverrideToolNames, setExpandedOverrideToolNames] = useState<
+    string[]
+  >([]);
   const [selectedToolNames, setSelectedToolNames] = useState<string[]>([]);
   const [toolSearch, setToolSearch] = useState("");
   const [selectedSubAgentIds, setSelectedSubAgentIds] = useState<string[]>([]);
@@ -457,6 +460,13 @@ export default function AgentFormPage() {
       ),
     [configurableTools, selectedToolNames, toolConfigForms]
   );
+  const configuredOverrideToolCount = useMemo(
+    () =>
+      visibleConfigurableTools.filter((tool) =>
+        hasToolOverrideValues(toolConfigForms[tool.name])
+      ).length,
+    [toolConfigForms, visibleConfigurableTools]
+  );
   const filteredToolOptions = useMemo(() => {
     const query = toolSearch.trim().toLowerCase();
     return toolCatalog.filter((tool) => {
@@ -466,6 +476,19 @@ export default function AgentFormPage() {
       return [tool.name, tool.description].join(" ").toLowerCase().includes(query);
     });
   }, [toolCatalog, toolSearch]);
+  const selectedTools = useMemo(
+    () =>
+      selectedToolNames.map((toolName) => {
+        const tool = toolCatalog.find((candidate) => candidate.name === toolName);
+        return (
+          tool || {
+            name: toolName,
+            description: "",
+          }
+        );
+      }),
+    [selectedToolNames, toolCatalog]
+  );
   const selectedSubAgents = useMemo(
     () =>
       selectedSubAgentIds.map((agentId) => {
@@ -496,11 +519,43 @@ export default function AgentFormPage() {
       });
   }, [availableAgents, currentAgentId, subAgentSearch]);
 
+  useEffect(() => {
+    const visibleNames = visibleConfigurableTools.map((tool) => tool.name);
+    if (visibleNames.length === 0) {
+      setExpandedOverrideToolNames([]);
+      return;
+    }
+
+    setExpandedOverrideToolNames((current) => {
+      if (visibleNames.length <= 2) {
+        return visibleNames;
+      }
+
+      const visibleNameSet = new Set(visibleNames);
+      const nextNames = current.filter((name) => visibleNameSet.has(name));
+
+      visibleConfigurableTools.forEach((tool) => {
+        if (hasToolOverrideValues(toolConfigForms[tool.name])) {
+          nextNames.push(tool.name);
+        }
+      });
+
+      if (nextNames.length === 0) {
+        nextNames.push(visibleNames[0]);
+      }
+
+      return Array.from(new Set(nextNames));
+    });
+  }, [toolConfigForms, visibleConfigurableTools]);
+
   const updateToolConfigField = (
     toolName: string,
     fieldName: string,
     value: string
   ) => {
+    setExpandedOverrideToolNames((current) =>
+      current.includes(toolName) ? current : [...current, toolName]
+    );
     setToolConfigForms((current) => ({
       ...current,
       [toolName]: {
@@ -511,6 +566,9 @@ export default function AgentFormPage() {
   };
 
   const applyToolPreset = (toolName: string, preset: ToolOverridePreset) => {
+    setExpandedOverrideToolNames((current) =>
+      current.includes(toolName) ? current : [...current, toolName]
+    );
     setToolConfigForms((current) => ({
       ...current,
       [toolName]: {
@@ -521,6 +579,21 @@ export default function AgentFormPage() {
     setSelectedToolNames((current) =>
       current.includes(toolName) ? current : [...current, toolName]
     );
+  };
+
+  const toggleOverrideToolExpansion = (toolName: string) => {
+    setExpandedOverrideToolNames((current) =>
+      current.includes(toolName)
+        ? current.filter((name) => name !== toolName)
+        : [...current, toolName]
+    );
+  };
+
+  const clearToolOverrides = (tool: ToolCatalogItem) => {
+    setToolConfigForms((current) => ({
+      ...current,
+      [tool.name]: buildToolConfigForm(tool, undefined),
+    }));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -606,111 +679,124 @@ export default function AgentFormPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="max-w-7xl w-full mx-auto space-y-8 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_480px] lg:gap-x-8 lg:gap-y-6 lg:items-start lg:grid-flow-row-dense mb-16 px-4 sm:px-0">
-        {/* Basic Info */}
-        <section
-          className="lg:col-start-1 lg:row-span-2 rounded-3xl border border-white/5 p-6 shadow-sm flex flex-col h-full"
-          style={{ background: "var(--surface-container)" }}
-        >
-          <div className="mb-6 flex items-center gap-2 border-b border-white/5 pb-3">
-             <div className="h-5 w-1.5 rounded-full bg-accent-cyan" />
-             <h2 className="font-heading text-lg font-semibold text-foreground">Agent Identity & Prompt</h2>
-          </div>
+      <form
+        onSubmit={handleSubmit}
+        className="mx-auto mb-16 grid max-w-[1560px] gap-6 px-4 sm:px-0 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start xl:gap-8 2xl:max-w-[1640px] 2xl:grid-cols-[minmax(0,1fr)_400px]"
+      >
+        <div className="space-y-6 xl:min-w-0">
+          {/* Basic Info */}
+          <section
+            className="rounded-3xl border border-white/5 p-6 shadow-sm"
+            style={{ background: "var(--surface-container)" }}
+          >
+            <div className="mb-6 flex items-center gap-2 border-b border-white/5 pb-3">
+              <div className="h-5 w-1.5 rounded-full bg-accent-cyan" />
+              <h2 className="font-heading text-lg font-semibold text-foreground">
+                Agent Identity & Prompt
+              </h2>
+            </div>
 
-          <div className="space-y-6 flex-1 flex flex-col">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="name"
+                    className="text-xs uppercase tracking-[0.05rem] font-bold"
+                    style={{ color: "var(--on-surface-dim)" }}
+                  >
+                    Agent Name
+                  </Label>
+                  <Input
+                    id="name"
+                    value={form.name}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Research Agent"
+                    required
+                    className="h-11 border-0 bg-surface-lowest text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="role"
+                    className="text-xs uppercase tracking-[0.05rem] font-bold"
+                    style={{ color: "var(--on-surface-dim)" }}
+                  >
+                    Role
+                  </Label>
+                  <Input
+                    id="role"
+                    value={form.role}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        role: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Senior Researcher"
+                    required
+                    className="h-11 border-0 bg-surface-lowest text-foreground"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label
-                  htmlFor="name"
+                  htmlFor="description"
                   className="text-xs uppercase tracking-[0.05rem] font-bold"
                   style={{ color: "var(--on-surface-dim)" }}
                 >
-                  Agent Name
+                  Description
                 </Label>
-                <Input
-                  id="name"
-                  value={form.name}
+                <Textarea
+                  id="description"
+                  value={form.description}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, name: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
                   }
-                  placeholder="e.g., Research Agent"
-                  required
-                  className="border-0 bg-surface-lowest text-foreground h-11"
+                  placeholder="What does this agent do?"
+                  rows={3}
+                  className="resize-none border-0 bg-surface-lowest text-foreground"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label
-                  htmlFor="role"
+                  htmlFor="systemPrompt"
                   className="text-xs uppercase tracking-[0.05rem] font-bold"
                   style={{ color: "var(--on-surface-dim)" }}
                 >
-                  Role
+                  System Prompt
                 </Label>
-                <Input
-                  id="role"
-                  value={form.role}
+                <Textarea
+                  id="systemPrompt"
+                  value={form.systemPrompt}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, role: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      systemPrompt: event.target.value,
+                    }))
                   }
-                  placeholder="e.g., Senior Researcher"
-                  required
-                  className="border-0 bg-surface-lowest text-foreground h-11"
+                  placeholder="Define the agent's behavior and personality..."
+                  rows={12}
+                  className="min-h-[320px] resize-y border-0 bg-surface-lowest p-4 font-mono text-sm leading-relaxed text-foreground"
                 />
               </div>
             </div>
+          </section>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="description"
-                className="text-xs uppercase tracking-[0.05rem] font-bold"
-                style={{ color: "var(--on-surface-dim)" }}
-              >
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    description: event.target.value,
-                  }))
-                }
-                placeholder="What does this agent do?"
-                rows={3}
-                className="resize-none border-0 bg-surface-lowest text-foreground"
-              />
-            </div>
-
-            <div className="space-y-2 flex-1 flex flex-col min-h-[300px]">
-              <Label
-                htmlFor="systemPrompt"
-                className="text-xs uppercase tracking-[0.05rem] font-bold"
-                style={{ color: "var(--on-surface-dim)" }}
-              >
-                System Prompt
-              </Label>
-              <Textarea
-                id="systemPrompt"
-                value={form.systemPrompt}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    systemPrompt: event.target.value,
-                  }))
-                }
-                placeholder="Define the agent's behavior and personality..."
-                className="flex-1 resize-y border-0 bg-surface-lowest font-mono text-sm leading-relaxed text-foreground p-4 h-full"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Tools Section */}
-        <section
-          className="rounded-3xl border border-white/5 p-5 lg:col-start-2 shadow-sm"
-          style={{ background: "var(--surface-container)" }}
-        >
+          {/* Tools Section */}
+          <section
+            className="rounded-3xl border border-white/5 p-5 shadow-sm"
+            style={{ background: "var(--surface-container)" }}
+          >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="font-heading text-lg font-semibold text-foreground">
@@ -730,11 +816,61 @@ export default function AgentFormPage() {
                 color: "var(--on-surface-dim)",
               }}
             >
-              {selectedToolNames.length} selected
+                {selectedToolNames.length} selected
+              </div>
             </div>
-          </div>
 
-          <div className="mt-5 grid gap-5 grid-cols-1">
+          <div className="mt-5 space-y-4">
+            <div
+              className="rounded-2xl border border-white/5 p-3"
+              style={{ background: "var(--surface-low)" }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-foreground">
+                  Selection Preview
+                </p>
+                <p
+                  className="text-[11px] uppercase tracking-[0.08rem]"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Click a chip to remove
+                </p>
+              </div>
+              {selectedTools.length === 0 ? (
+                <div
+                  className="mt-3 rounded-xl px-3 py-3 text-sm"
+                  style={{
+                    background: "var(--surface-container)",
+                    color: "var(--on-surface-dim)",
+                  }}
+                >
+                  No tools selected yet.
+                </div>
+              ) : (
+                <div className="mt-3 flex max-h-28 flex-wrap gap-2 overflow-y-auto pr-1">
+                  {selectedTools.map((tool) => (
+                    <button
+                      key={tool.name}
+                      type="button"
+                      onClick={() =>
+                        setSelectedToolNames((current) =>
+                          current.filter((item) => item !== tool.name)
+                        )
+                      }
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] transition-opacity hover:opacity-80 ${
+                        configurableToolNames.has(tool.name)
+                          ? "bg-[#14b8a61a] text-[#5eead4]"
+                          : "bg-[#7bd0ff14] text-accent-cyan"
+                      }`}
+                      title={tool.description || "Remove tool"}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div>
               <Label
                 htmlFor="toolSearch"
@@ -750,7 +886,7 @@ export default function AgentFormPage() {
                 className="border-0 bg-surface-low text-foreground"
               />
 
-              <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
+              <div className="mt-3 max-h-[240px] space-y-2 overflow-y-auto pr-1">
                 {filteredToolOptions.length === 0 ? (
                   <div
                     className="rounded-2xl px-4 py-4 text-sm"
@@ -776,7 +912,7 @@ export default function AgentFormPage() {
                               : [...current, tool.name]
                           )
                         }
-                        className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+                        className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
                           selected
                             ? "border-[#7bd0ff55] bg-[#7bd0ff14]"
                             : "border-white/5 bg-surface-low hover:border-[#7bd0ff33]"
@@ -795,7 +931,7 @@ export default function AgentFormPage() {
                               )}
                             </div>
                             <p
-                              className="mt-2 text-sm"
+                              className="mt-1.5 line-clamp-2 text-xs leading-5"
                               style={{ color: "var(--on-surface-dim)" }}
                             >
                               {tool.description}
@@ -818,184 +954,67 @@ export default function AgentFormPage() {
               </div>
             </div>
 
-            <div>
-              <Label className="mb-1.5 block text-sm font-medium text-foreground">
-                Selected Tools
-              </Label>
-              <div
-                className="min-h-[200px] rounded-2xl border border-white/5 p-3"
-                style={{ background: "var(--surface-low)" }}
-              >
-                {selectedToolNames.length === 0 ? (
-                  <div
-                    className="rounded-xl px-3 py-4 text-sm"
-                    style={{
-                      background: "var(--surface-container)",
-                      color: "var(--on-surface-dim)",
-                    }}
-                  >
-                    No tools selected yet.
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedToolNames.map((toolName) => (
-                      <button
-                        key={toolName}
-                        type="button"
-                        onClick={() =>
-                          setSelectedToolNames((current) =>
-                            current.filter((item) => item !== toolName)
-                          )
-                        }
-                        className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] transition-opacity hover:opacity-80 ${
-                          configurableToolNames.has(toolName)
-                            ? "bg-[#14b8a61a] text-[#5eead4]"
-                            : "bg-[#7bd0ff14] text-accent-cyan"
-                        }`}
-                        title="Remove tool"
-                      >
-                        {toolName}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <p className="mt-2 text-xs" style={{ color: "var(--on-surface-dim)" }}>
-                Configurable tools expose per-agent override cards in the
-                section below.
-              </p>
-            </div>
+            <p className="text-xs" style={{ color: "var(--on-surface-dim)" }}>
+              Configurable tools expose per-agent override cards in the
+              section below.
+            </p>
           </div>
-        </section>
+          </section>
 
-        <section
-          className="rounded-3xl border border-white/5 p-5 lg:col-start-2 shadow-sm mt-6 lg:mt-0"
-          style={{ background: "var(--surface-container)" }}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="font-heading text-lg font-semibold text-foreground">
-                Allowed Sub-Agents
-              </h2>
-              <p
-                className="mt-1 text-sm"
-                style={{ color: "var(--on-surface-dim)" }}
-              >
-                Choose which child agents this agent is allowed to delegate to.
-                For hierarchy-wide editing, use the{" "}
-                <Link
-                  href="/agents/canvas"
-                  className="text-accent-cyan hover:underline"
+          <section
+            className="rounded-3xl border border-white/5 p-5 shadow-sm"
+            style={{ background: "var(--surface-container)" }}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-foreground">
+                  Allowed Sub-Agents
+                </h2>
+                <p
+                  className="mt-1 text-sm"
+                  style={{ color: "var(--on-surface-dim)" }}
                 >
-                  hierarchy canvas
-                </Link>
-                .
-              </p>
-            </div>
-            <div
-              className="rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem]"
-              style={{
-                background: "var(--surface-low)",
-                color: "var(--on-surface-dim)",
-              }}
-            >
-              {selectedSubAgentIds.length} selected
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-5 grid-cols-1">
-            <div>
-              <Label
-                htmlFor="subAgentSearch"
-                className="mb-1.5 block text-sm font-medium text-foreground"
-              >
-                Search Agents
-              </Label>
-              <Input
-                id="subAgentSearch"
-                value={subAgentSearch}
-                onChange={(event) => setSubAgentSearch(event.target.value)}
-                placeholder="Search by name, role, or description"
-                className="border-0 bg-surface-low text-foreground"
-              />
-
-              <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
-                {filteredSubAgentOptions.length === 0 ? (
-                  <div
-                    className="rounded-2xl px-4 py-4 text-sm"
-                    style={{
-                      background: "var(--surface-low)",
-                      color: "var(--on-surface-dim)",
-                    }}
+                  Choose which child agents this agent is allowed to delegate to.
+                  For hierarchy-wide editing, use the{" "}
+                  <Link
+                    href="/agents/canvas"
+                    className="text-accent-cyan hover:underline"
                   >
-                    No agents match the current search.
-                  </div>
-                ) : (
-                  filteredSubAgentOptions.map((agent) => {
-                    const selected = selectedSubAgentIds.includes(agent.id);
-                    return (
-                      <button
-                        key={agent.id}
-                        type="button"
-                        onClick={() =>
-                          setSelectedSubAgentIds((current) =>
-                            current.includes(agent.id)
-                              ? current.filter((item) => item !== agent.id)
-                              : [...current, agent.id]
-                          )
-                        }
-                        className={`w-full rounded-2xl border p-3 text-left transition-colors ${
-                          selected
-                            ? "border-[#7bd0ff55] bg-[#7bd0ff14]"
-                            : "border-white/5 bg-surface-low hover:border-[#7bd0ff33]"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium text-foreground">
-                              {agent.name}
-                            </p>
-                            <p
-                              className="mt-1 text-xs uppercase tracking-[0.08rem]"
-                              style={{ color: "var(--on-surface-dim)" }}
-                            >
-                              {agent.role}
-                            </p>
-                          </div>
-                          <div
-                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
-                              selected
-                                ? "bg-[#7bd0ff1a] text-accent-cyan"
-                                : "bg-white/5 text-on-surface-dim"
-                            }`}
-                          >
-                            {selected ? "Selected" : "Available"}
-                          </div>
-                        </div>
-                        <p
-                          className="mt-2 line-clamp-2 text-sm"
-                          style={{ color: "var(--on-surface-dim)" }}
-                        >
-                          {agent.description || "No description"}
-                        </p>
-                      </button>
-                    );
-                  })
-                )}
+                    hierarchy canvas
+                  </Link>
+                  .
+                </p>
+              </div>
+              <div
+                className="rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem]"
+                style={{
+                  background: "var(--surface-low)",
+                  color: "var(--on-surface-dim)",
+                }}
+              >
+                {selectedSubAgentIds.length} selected
               </div>
             </div>
 
-            <div>
-              <Label className="mb-1.5 block text-sm font-medium text-foreground">
-                Selected Sub-Agents
-              </Label>
+            <div className="mt-5 space-y-4">
               <div
-                className="min-h-[200px] rounded-2xl border border-white/5 p-3"
+                className="rounded-2xl border border-white/5 p-3"
                 style={{ background: "var(--surface-low)" }}
               >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">
+                    Selection Preview
+                  </p>
+                  <p
+                    className="text-[11px] uppercase tracking-[0.08rem]"
+                    style={{ color: "var(--on-surface-dim)" }}
+                  >
+                    Click a chip to remove
+                  </p>
+                </div>
                 {selectedSubAgents.length === 0 ? (
                   <div
-                    className="rounded-xl px-3 py-4 text-sm"
+                    className="mt-3 rounded-xl px-3 py-3 text-sm"
                     style={{
                       background: "var(--surface-container)",
                       color: "var(--on-surface-dim)",
@@ -1004,7 +1023,7 @@ export default function AgentFormPage() {
                     No sub-agents selected yet.
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="mt-3 flex max-h-28 flex-wrap gap-2 overflow-y-auto pr-1">
                     {selectedSubAgents.map((agent) => (
                       <button
                         key={agent.id}
@@ -1015,7 +1034,7 @@ export default function AgentFormPage() {
                           )
                         }
                         className="rounded-full bg-[#7bd0ff14] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-accent-cyan transition-opacity hover:opacity-80"
-                        title="Remove sub-agent"
+                        title={agent.role || "Remove sub-agent"}
                       >
                         {agent.name}
                       </button>
@@ -1023,344 +1042,511 @@ export default function AgentFormPage() {
                   </div>
                 )}
               </div>
+
+              <div>
+                <Label
+                  htmlFor="subAgentSearch"
+                  className="mb-1.5 block text-sm font-medium text-foreground"
+                >
+                  Search Agents
+                </Label>
+                <Input
+                  id="subAgentSearch"
+                  value={subAgentSearch}
+                  onChange={(event) => setSubAgentSearch(event.target.value)}
+                  placeholder="Search by name, role, or description"
+                  className="border-0 bg-surface-low text-foreground"
+                />
+
+                <div className="mt-3 max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {filteredSubAgentOptions.length === 0 ? (
+                    <div
+                      className="rounded-2xl px-4 py-4 text-sm"
+                      style={{
+                        background: "var(--surface-low)",
+                        color: "var(--on-surface-dim)",
+                      }}
+                    >
+                      No agents match the current search.
+                    </div>
+                  ) : (
+                    filteredSubAgentOptions.map((agent) => {
+                      const selected = selectedSubAgentIds.includes(agent.id);
+                      return (
+                        <button
+                          key={agent.id}
+                          type="button"
+                          onClick={() =>
+                            setSelectedSubAgentIds((current) =>
+                              current.includes(agent.id)
+                                ? current.filter((item) => item !== agent.id)
+                                : [...current, agent.id]
+                            )
+                          }
+                          className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                            selected
+                              ? "border-[#7bd0ff55] bg-[#7bd0ff14]"
+                              : "border-white/5 bg-surface-low hover:border-[#7bd0ff33]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground">
+                                {agent.name}
+                              </p>
+                              <p
+                                className="mt-1 text-xs uppercase tracking-[0.08rem]"
+                                style={{ color: "var(--on-surface-dim)" }}
+                              >
+                                {agent.role}
+                              </p>
+                            </div>
+                            <div
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
+                                selected
+                                  ? "bg-[#7bd0ff1a] text-accent-cyan"
+                                  : "bg-white/5 text-on-surface-dim"
+                              }`}
+                            >
+                              {selected ? "Selected" : "Available"}
+                            </div>
+                          </div>
+                          <p
+                            className="mt-1.5 line-clamp-2 text-xs leading-5"
+                            style={{ color: "var(--on-surface-dim)" }}
+                          >
+                            {agent.description || "No description"}
+                          </p>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
               {isEdit && (
-                <p className="mt-2 text-xs" style={{ color: "var(--on-surface-dim)" }}>
+                <p className="text-xs" style={{ color: "var(--on-surface-dim)" }}>
                   The current agent cannot select itself as a sub-agent.
                 </p>
               )}
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section
-          className="rounded-3xl border border-white/5 p-5 lg:col-start-1 shadow-sm mt-6 lg:mt-0"
-          style={{ background: "var(--surface-container)" }}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-accent-cyan" />
-                <h2 className="font-heading text-lg font-semibold text-foreground">
-                  Per-Agent Tool Overrides
-                </h2>
+          <section
+            className="rounded-3xl border border-white/5 p-5 shadow-sm"
+            style={{ background: "var(--surface-container)" }}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-accent-cyan" />
+                  <h2 className="font-heading text-lg font-semibold text-foreground">
+                    Per-Agent Tool Overrides
+                  </h2>
+                </div>
+                <p
+                  className="mt-1 text-sm"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Override selected tool defaults for this agent without changing
+                  the global workspace settings.
+                </p>
               </div>
-              <p
-                className="mt-1 text-sm"
-                style={{ color: "var(--on-surface-dim)" }}
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-[#14b8a61a] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-[#5eead4]">
+                  {visibleConfigurableTools.length} visible
+                </span>
+                <span className="rounded-full bg-[rgba(250,204,21,0.16)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-[#fde68a]">
+                  {configuredOverrideToolCount} configured
+                </span>
+              </div>
+            </div>
+
+            {configurableTools.length === 0 ? (
+              <div
+                className="mt-4 rounded-2xl px-4 py-4 text-sm"
+                style={{
+                  background: "var(--surface-low)",
+                  color: "var(--on-surface-dim)",
+                }}
               >
-                Override selected tool defaults for this agent without changing
-                the global workspace settings.
-              </p>
-            </div>
-          </div>
+                No configurable tools are currently available in the tool
+                registry.
+              </div>
+            ) : visibleConfigurableTools.length === 0 ? (
+              <div
+                className="mt-4 rounded-2xl px-4 py-4 text-sm"
+                style={{
+                  background: "var(--surface-low)",
+                  color: "var(--on-surface-dim)",
+                }}
+              >
+                Select a configurable tool above to add agent-specific overrides.
+                Available:{" "}
+                <span className="text-foreground">
+                  {configurableTools.map((tool) => tool.name).join(", ")}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-5">
+                {visibleConfigurableTools.map((tool) => {
+                  const toolConfigForm =
+                    toolConfigForms[tool.name] ||
+                    buildToolConfigForm(tool, agentToolConfig[tool.name]);
+                  const toolEnabled = selectedToolNames.includes(tool.name);
+                  const hasOverrides = hasToolOverrideValues(toolConfigForm);
+                  const supportsCredentialRef = (tool.configSchema || []).some(
+                    (field) => field.name === "credential_ref"
+                  );
+                  const toolPresets = getToolOverridePresets(
+                    tool,
+                    toolConfigForm
+                  );
+                  const isExpanded = expandedOverrideToolNames.includes(
+                    tool.name
+                  );
+                  const overrideEntries = Object.entries(
+                    sanitizeToolConfig(tool, toolConfigForm)
+                  );
 
-          {configurableTools.length === 0 ? (
-            <div
-              className="mt-4 rounded-2xl px-4 py-4 text-sm"
-              style={{
-                background: "var(--surface-low)",
-                color: "var(--on-surface-dim)",
-              }}
-            >
-              No configurable tools are currently available in the tool
-              registry.
-            </div>
-          ) : visibleConfigurableTools.length === 0 ? (
-            <div
-              className="mt-4 rounded-2xl px-4 py-4 text-sm"
-              style={{
-                background: "var(--surface-low)",
-                color: "var(--on-surface-dim)",
-              }}
-            >
-              Select a configurable tool above to add agent-specific overrides.
-              Available:{" "}
-              <span className="text-foreground">
-                {configurableTools.map((tool) => tool.name).join(", ")}
-              </span>
-            </div>
-          ) : (
-            <div className="mt-5 space-y-5">
-              {visibleConfigurableTools.map((tool) => {
-                const toolConfigForm =
-                  toolConfigForms[tool.name] ||
-                  buildToolConfigForm(tool, agentToolConfig[tool.name]);
-                const toolEnabled = selectedToolNames.includes(tool.name);
-                const hasOverrides = hasToolOverrideValues(toolConfigForm);
-                const supportsCredentialRef = (tool.configSchema || []).some(
-                  (field) => field.name === "credential_ref"
-                );
-                const toolPresets = getToolOverridePresets(tool, toolConfigForm);
-
-                return (
-                  <div
-                    key={tool.name}
-                    className="rounded-2xl border border-white/5 p-4"
-                    style={{ background: "var(--surface-low)" }}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-medium text-foreground">
-                            {tool.name}
-                          </h3>
-                          <span className="rounded-full bg-[#14b8a61a] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] text-[#5eead4]">
-                            configurable
-                          </span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
-                              toolEnabled
-                                ? "bg-[#7bd0ff14] text-accent-cyan"
-                                : "bg-white/5 text-on-surface-dim"
-                            }`}
-                          >
-                            {toolEnabled ? "Enabled" : "Disabled"}
-                          </span>
-                          {hasOverrides && (
-                            <span className="rounded-full bg-[rgba(250,204,21,0.16)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] text-[#fde68a]">
-                              Overrides set
+                  return (
+                    <div
+                      key={tool.name}
+                      className="rounded-2xl border border-white/5 p-4"
+                      style={{ background: "var(--surface-low)" }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-medium text-foreground">
+                              {tool.name}
+                            </h3>
+                            <span className="rounded-full bg-[#14b8a61a] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] text-[#5eead4]">
+                              configurable
                             </span>
-                          )}
-                        </div>
-                        <p
-                          className="mt-2 text-sm"
-                          style={{ color: "var(--on-surface-dim)" }}
-                        >
-                          {tool.description}
-                        </p>
-                        {toolPresets.length > 0 && (
-                          <div className="mt-3">
-                            <p
-                              className="mb-2 text-[11px] font-medium uppercase tracking-[0.08rem]"
-                              style={{ color: "var(--on-surface-dim)" }}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
+                                toolEnabled
+                                  ? "bg-[#7bd0ff14] text-accent-cyan"
+                                  : "bg-white/5 text-on-surface-dim"
+                              }`}
                             >
-                              Quick Presets
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {toolPresets.map((preset) => (
-                                <button
-                                  key={`${tool.name}-${preset.id}`}
-                                  type="button"
-                                  onClick={() => applyToolPreset(tool.name, preset)}
-                                  className="rounded-full bg-[#14b8a61a] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-[#5eead4] transition-opacity hover:opacity-85"
-                                  title={preset.description}
+                              {toolEnabled ? "Enabled" : "Disabled"}
+                            </span>
+                            {hasOverrides && (
+                              <span className="rounded-full bg-[rgba(250,204,21,0.16)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] text-[#fde68a]">
+                                Overrides set
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            className="mt-2 line-clamp-2 text-sm"
+                            style={{ color: "var(--on-surface-dim)" }}
+                          >
+                            {tool.description}
+                          </p>
+                          {overrideEntries.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {overrideEntries.map(([fieldName, fieldValue]) => (
+                                <span
+                                  key={`${tool.name}-${fieldName}`}
+                                  className="rounded-full border border-[#7bd0ff33] bg-[#7bd0ff14] px-2.5 py-1 text-[11px] text-accent-cyan"
                                 >
-                                  {preset.label}
-                                </button>
+                                  {fieldName}: {String(fieldValue)}
+                                </span>
                               ))}
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        {!toolEnabled && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {!toolEnabled && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() =>
+                                setSelectedToolNames((current) =>
+                                  current.includes(tool.name)
+                                    ? current
+                                    : [...current, tool.name]
+                                )
+                              }
+                              className="border-0 bg-surface-high text-foreground"
+                            >
+                              Enable Tool
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             variant="secondary"
-                            onClick={() =>
-                              setSelectedToolNames((current) =>
-                                current.includes(tool.name)
-                                  ? current
-                                  : [...current, tool.name]
-                              )
-                            }
+                            onClick={() => clearToolOverrides(tool)}
                             className="border-0 bg-surface-high text-foreground"
                           >
-                            Enable Tool
+                            Clear Overrides
                           </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => toggleOverrideToolExpansion(tool.name)}
+                            className="border-0 bg-surface-high text-foreground"
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="mr-2 h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="mr-2 h-4 w-4" />
+                            )}
+                            {isExpanded ? "Collapse" : "Expand"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <>
+                          {toolPresets.length > 0 && (
+                            <div className="mt-4">
+                              <p
+                                className="mb-2 text-[11px] font-medium uppercase tracking-[0.08rem]"
+                                style={{ color: "var(--on-surface-dim)" }}
+                              >
+                                Quick Presets
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {toolPresets.map((preset) => (
+                                  <button
+                                    key={`${tool.name}-${preset.id}`}
+                                    type="button"
+                                    onClick={() =>
+                                      applyToolPreset(tool.name, preset)
+                                    }
+                                    className="rounded-full bg-[#14b8a61a] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-[#5eead4] transition-opacity hover:opacity-85"
+                                    title={preset.description}
+                                  >
+                                    {preset.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {(tool.configSchema || []).map((field) => {
+                              const inheritedValue =
+                                tool.globalSettings?.[field.name] ??
+                                field.default ??
+                                "";
+
+                              return (
+                                <div
+                                  key={`${tool.name}-${field.name}`}
+                                  className={
+                                    field.name === "allowed_domains"
+                                      ? "md:col-span-2"
+                                      : ""
+                                  }
+                                >
+                                  <Label
+                                    htmlFor={`${tool.name}-${field.name}`}
+                                    className="mb-1 block text-sm font-medium text-foreground"
+                                  >
+                                    {field.label}
+                                  </Label>
+                                  <Input
+                                    id={`${tool.name}-${field.name}`}
+                                    type={
+                                      field.type === "number" ? "number" : "text"
+                                    }
+                                    value={toolConfigForm[field.name] || ""}
+                                    onChange={(event) =>
+                                      updateToolConfigField(
+                                        tool.name,
+                                        field.name,
+                                        event.target.value
+                                      )
+                                    }
+                                    placeholder={String(inheritedValue)}
+                                    className="border-0 bg-surface-container text-foreground"
+                                  />
+                                  <p
+                                    className="mt-1 text-[11px] leading-5"
+                                    style={{ color: "var(--on-surface-dim)" }}
+                                  >
+                                    {field.description} Inherit current workspace
+                                    value:{" "}
+                                    <span className="text-foreground">
+                                      {String(inheritedValue || "Not set")}
+                                    </span>
+                                  </p>
+
+                                  {field.name === "credential_ref" &&
+                                    credentials.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {credentials.map((credential) => (
+                                          <button
+                                            key={`${tool.name}-${credential.id}`}
+                                            type="button"
+                                            onClick={() =>
+                                              updateToolConfigField(
+                                                tool.name,
+                                                "credential_ref",
+                                                toolConfigForm.credential_ref ===
+                                                  credential.name
+                                                  ? ""
+                                                  : credential.name
+                                              )
+                                            }
+                                            className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] transition-colors ${
+                                              toolConfigForm.credential_ref ===
+                                              credential.name
+                                                ? "bg-[#7bd0ff14] text-accent-cyan"
+                                                : "bg-surface-container text-on-surface-dim hover:text-accent-cyan"
+                                            }`}
+                                          >
+                                            {credential.name}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        {!toolEnabled && hasOverrides && (
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--on-surface-dim)" }}
+                          >
+                            This tool has saved overrides but is not currently in
+                            the agent&apos;s allowed tools.
+                          </p>
                         )}
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() =>
-                            setToolConfigForms((current) => ({
-                              ...current,
-                              [tool.name]: buildToolConfigForm(tool, undefined),
-                            }))
-                          }
-                          className="border-0 bg-surface-high text-foreground"
-                        >
-                          Clear Overrides
-                        </Button>
+                        {supportsCredentialRef && credentials.length === 0 && (
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--on-surface-dim)" }}
+                          >
+                            No credentials in the vault yet. Add one in{" "}
+                            <Link
+                              href="/tools"
+                              className="text-accent-cyan hover:underline"
+                            >
+                              Tools Library
+                            </Link>
+                            .
+                          </p>
+                        )}
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
 
-                    <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {(tool.configSchema || []).map((field) => {
-                        const inheritedValue =
-                          tool.globalSettings?.[field.name] ?? field.default ?? "";
-
-                        return (
-                          <div
-                            key={`${tool.name}-${field.name}`}
-                            className={
-                              field.name === "allowed_domains"
-                                ? "md:col-span-2"
-                                : ""
-                            }
-                          >
-                            <Label
-                              htmlFor={`${tool.name}-${field.name}`}
-                              className="mb-1.5 block text-sm font-medium text-foreground"
-                            >
-                              {field.label}
-                            </Label>
-                            <Input
-                              id={`${tool.name}-${field.name}`}
-                              type={field.type === "number" ? "number" : "text"}
-                              value={toolConfigForm[field.name] || ""}
-                              onChange={(event) =>
-                                updateToolConfigField(
-                                  tool.name,
-                                  field.name,
-                                  event.target.value
-                                )
-                              }
-                              placeholder={String(inheritedValue)}
-                              className="border-0 bg-surface-container text-foreground"
-                            />
-                            <p
-                              className="mt-1.5 text-[11px]"
-                              style={{ color: "var(--on-surface-dim)" }}
-                            >
-                              {field.description} Inherit current workspace
-                              value:{" "}
-                              <span className="text-foreground">
-                                {String(inheritedValue || "Not set")}
-                              </span>
-                            </p>
-
-                            {field.name === "credential_ref" &&
-                              credentials.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  {credentials.map((credential) => (
-                                    <button
-                                      key={`${tool.name}-${credential.id}`}
-                                      type="button"
-                                      onClick={() =>
-                                        updateToolConfigField(
-                                          tool.name,
-                                          "credential_ref",
-                                          toolConfigForm.credential_ref ===
-                                            credential.name
-                                            ? ""
-                                            : credential.name
-                                        )
-                                      }
-                                      className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] transition-colors ${
-                                        toolConfigForm.credential_ref ===
-                                        credential.name
-                                          ? "bg-[#7bd0ff14] text-accent-cyan"
-                                          : "bg-surface-container text-on-surface-dim hover:text-accent-cyan"
-                                      }`}
-                                    >
-                                      {credential.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      {!toolEnabled && hasOverrides && (
-                        <p
-                          className="text-xs"
-                          style={{ color: "var(--on-surface-dim)" }}
-                        >
-                          This tool has saved overrides but is not currently in
-                          the agent&apos;s allowed tools.
-                        </p>
-                      )}
-                      {supportsCredentialRef && credentials.length === 0 && (
-                        <p
-                          className="text-xs"
-                          style={{ color: "var(--on-surface-dim)" }}
-                        >
-                          No credentials in the vault yet. Add one in{" "}
-                          <Link
-                            href="/tools"
-                            className="text-accent-cyan hover:underline"
-                          >
-                            Tools Library
-                          </Link>
-                          .
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:col-start-1 mt-6 lg:mt-0">
-          <div className="space-y-2">
-            <Label
-              htmlFor="maxSteps"
-              className="text-[11px] uppercase tracking-[0.05rem]"
-              style={{ color: "var(--on-surface-dim)" }}
-            >
-              Max Steps
-            </Label>
-            <Input
-              id="maxSteps"
-              type="number"
-              min={1}
-              max={50}
-              value={form.maxSteps}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  maxSteps: parseInt(event.target.value, 10) || 10,
-                }))
-              }
-              className="border-0 bg-surface-container text-foreground"
-            />
-          </div>
-          <div
-            className="flex items-center justify-between rounded-lg p-3"
+        <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+          <section
+            className="rounded-3xl border border-white/5 p-5 shadow-sm"
             style={{ background: "var(--surface-container)" }}
           >
-            <Label htmlFor="active" className="cursor-pointer text-sm font-medium">
-              Active Status
-            </Label>
-            <Switch
-              id="active"
-              checked={form.active}
-              onCheckedChange={(checked) =>
-                setForm((current) => ({ ...current, active: checked }))
-              }
-            />
-          </div>
-        </div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-foreground">
+                  Agent Setup
+                </h2>
+                <p
+                  className="mt-1 text-sm"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Final runtime controls and save actions for this agent.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-[#7bd0ff14] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-accent-cyan">
+                  {selectedToolNames.length} tools
+                </span>
+                <span className="rounded-full bg-[#14b8a61a] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08rem] text-[#5eead4]">
+                  {selectedSubAgentIds.length} sub-agents
+                </span>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-3 pt-4 lg:col-start-1 pb-10">
-          <Button
-            type="submit"
-            disabled={saving}
-            className="border-0 px-8 font-medium text-[#060e20] hover:opacity-90 gradient-primary"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {isEdit ? "Update Agent" : "Create Agent"}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => router.push("/agents")}
-            className="border-0 bg-surface-high text-foreground"
-          >
-            Cancel
-          </Button>
-        </div>
+            <div className="mt-5 grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="maxSteps"
+                  className="text-[11px] uppercase tracking-[0.05rem]"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Max Steps
+                </Label>
+                <Input
+                  id="maxSteps"
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={form.maxSteps}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      maxSteps: parseInt(event.target.value, 10) || 10,
+                    }))
+                  }
+                  className="border-0 bg-surface-low text-foreground"
+                />
+              </div>
+              <div
+                className="flex items-center justify-between rounded-2xl p-3"
+                style={{ background: "var(--surface-low)" }}
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Active Status
+                  </p>
+                  <p
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--on-surface-dim)" }}
+                  >
+                    Inactive agents cannot receive tasks.
+                  </p>
+                </div>
+                <Switch
+                  id="active"
+                  checked={form.active}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, active: checked }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="border-0 px-8 font-medium text-[#060e20] hover:opacity-90 gradient-primary"
+              >
+                {saving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                {isEdit ? "Update Agent" : "Create Agent"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push("/agents")}
+                className="border-0 bg-surface-high text-foreground"
+              >
+                Cancel
+              </Button>
+            </div>
+          </section>
+        </aside>
       </form>
     </>
   );
