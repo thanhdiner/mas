@@ -6,26 +6,12 @@ from pymongo.errors import DuplicateKeyError
 from app.database import get_db
 from app.errors import DuplicateAgentNameError
 from app.models.agent import AgentCreate, AgentResponse, AgentUpdate
+from app.utils.doc_parser import doc_to_model
 from app.utils.object_id import to_object_id
 
 
 def _doc_to_response(doc: dict) -> AgentResponse:
-    return AgentResponse(
-        id=str(doc["_id"]),
-        name=doc["name"],
-        role=doc["role"],
-        description=doc.get("description", ""),
-        systemPrompt=doc.get("systemPrompt", ""),
-        allowedTools=doc.get("allowedTools", []),
-        toolConfig=doc.get("toolConfig", {}),
-        allowedSubAgents=doc.get("allowedSubAgents", []),
-        maxSteps=doc.get("maxSteps", 10),
-        active=doc.get("active", True),
-        model=doc.get("model"),
-        provider=doc.get("provider"),
-        createdAt=doc.get("createdAt", datetime.now(timezone.utc)),
-        updatedAt=doc.get("updatedAt"),
-    )
+    return doc_to_model(doc, AgentResponse)
 
 
 class AgentService:

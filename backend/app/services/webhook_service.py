@@ -22,6 +22,7 @@ from app.models.webhook import (
     WebhookTestNotificationKind,
     WebhookUpdate,
 )
+from app.utils.doc_parser import doc_to_model
 from app.utils.object_id import to_object_id, try_to_object_id
 
 settings = get_settings()
@@ -60,39 +61,11 @@ async def _resolve_agent_name(agent_id: str | None) -> str | None:
 
 
 def _doc_to_response(doc: dict, *, agent_name: str | None = None) -> WebhookResponse:
-    return WebhookResponse(
-        id=str(doc["_id"]),
-        name=doc["name"],
-        description=doc.get("description", ""),
-        agentId=doc["agentId"],
-        agentName=agent_name,
-        taskTitle=doc.get("taskTitle", "Webhook Trigger"),
-        allowDelegation=doc.get("allowDelegation", True),
-        requiresApproval=doc.get("requiresApproval", False),
-        active=doc.get("active", True),
-        lastTriggeredAt=doc.get("lastTriggeredAt"),
-        createdAt=doc.get("createdAt", datetime.now(timezone.utc)),
-        updatedAt=doc.get("updatedAt"),
-    )
+    return doc_to_model(doc, WebhookResponse, agentName=agent_name)
 
 
 def _delivery_doc_to_response(doc: dict) -> WebhookDeliveryResponse:
-    return WebhookDeliveryResponse(
-        id=str(doc["_id"]),
-        webhookId=doc["webhookId"],
-        status=doc.get("status", WebhookDeliveryStatus.PROCESSING),
-        taskId=doc.get("taskId"),
-        duplicate=doc.get("duplicate", False),
-        idempotencyKey=doc.get("idempotencyKey"),
-        requestMethod=doc.get("requestMethod", "POST"),
-        contentType=doc.get("contentType"),
-        payloadPreview=doc.get("payloadPreview"),
-        payloadSizeBytes=doc.get("payloadSizeBytes", 0),
-        payloadTruncated=doc.get("payloadTruncated", False),
-        error=doc.get("error"),
-        receivedAt=doc.get("receivedAt", datetime.now(timezone.utc)),
-        updatedAt=doc.get("updatedAt"),
-    )
+    return doc_to_model(doc, WebhookDeliveryResponse)
 
 
 def _extract_index_keys(index_info: dict) -> set[tuple[tuple[str, int], ...]]:

@@ -10,25 +10,12 @@ from app.models.task import (
     TaskStatus,
     TaskUpdate,
 )
+from app.utils.doc_parser import doc_to_model
 from app.utils.object_id import to_object_id, try_to_object_id
 
 
 def _doc_to_response(doc: dict) -> TaskResponse:
-    return TaskResponse(
-        id=str(doc["_id"]),
-        title=doc["title"],
-        input=doc["input"],
-        status=doc.get("status", TaskStatus.QUEUED),
-        assignedAgentId=doc["assignedAgentId"],
-        parentTaskId=doc.get("parentTaskId"),
-        createdBy=doc.get("createdBy", "user"),
-        allowDelegation=doc.get("allowDelegation", True),
-        requiresApproval=doc.get("requiresApproval", False),
-        result=doc.get("result"),
-        error=doc.get("error"),
-        createdAt=doc.get("createdAt", datetime.now(timezone.utc)),
-        updatedAt=doc.get("updatedAt"),
-    )
+    return doc_to_model(doc, TaskResponse)
 
 
 class TaskService:
@@ -94,13 +81,7 @@ class TaskService:
                     subtask_agent_name = subtask_agent_doc["name"]
 
             subtasks.append(
-                SubtaskInfo(
-                    id=str(subtask_doc["_id"]),
-                    title=subtask_doc["title"],
-                    status=subtask_doc.get("status", TaskStatus.QUEUED),
-                    assignedAgentId=subtask_doc["assignedAgentId"],
-                    agentName=subtask_agent_name,
-                )
+                doc_to_model(subtask_doc, SubtaskInfo, agentName=subtask_agent_name)
             )
 
         exec_doc = await db.executions.find_one(

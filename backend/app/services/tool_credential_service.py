@@ -12,6 +12,7 @@ from app.models.tool_credential import (
     ToolCredentialUpdate,
 )
 from app.utils.credential_crypto import decrypt_secret_map, encrypt_secret_map
+from app.utils.doc_parser import doc_to_model
 from app.utils.object_id import to_object_id
 
 BLOCKED_SECRET_HEADER_NAMES = {
@@ -58,14 +59,7 @@ class ToolCredentialService:
 
     @classmethod
     def _to_response(cls, doc: dict) -> ToolCredentialResponse:
-        return ToolCredentialResponse(
-            id=str(doc["_id"]),
-            name=doc["name"],
-            description=doc.get("description", ""),
-            headerKeys=doc.get("headerKeys", []),
-            createdAt=doc["createdAt"],
-            updatedAt=doc.get("updatedAt"),
-        )
+        return doc_to_model(doc, ToolCredentialResponse)
 
     @classmethod
     async def list_credentials(cls) -> list[ToolCredentialResponse]:

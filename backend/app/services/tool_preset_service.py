@@ -9,6 +9,7 @@ from app.database import get_db
 from app.errors import BadRequestError, NotFoundError
 from app.models.tool_preset import ToolPresetCreate, ToolPresetResponse, ToolPresetUpdate
 from app.tools.registry import tool_registry
+from app.utils.doc_parser import doc_to_model
 from app.utils.object_id import to_object_id
 
 
@@ -109,15 +110,7 @@ class ToolPresetService:
 
     @staticmethod
     def _to_response(doc: dict) -> ToolPresetResponse:
-        return ToolPresetResponse(
-            id=str(doc["_id"]),
-            name=doc["name"],
-            description=doc.get("description", ""),
-            toolName=doc["toolName"],
-            values=doc.get("values", {}),
-            createdAt=doc["createdAt"],
-            updatedAt=doc.get("updatedAt"),
-        )
+        return doc_to_model(doc, ToolPresetResponse)
 
     @classmethod
     async def list_presets(

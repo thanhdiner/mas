@@ -8,6 +8,7 @@ from app.models.execution import (
     ExecutionStepResponse,
     StepType,
 )
+from app.utils.doc_parser import doc_to_model
 from app.utils.object_id import to_object_id
 
 
@@ -25,13 +26,7 @@ class ExecutionService:
         }
         result = await db.executions.insert_one(doc)
         doc["_id"] = result.inserted_id
-        return ExecutionResponse(
-            id=str(doc["_id"]),
-            taskId=doc["taskId"],
-            agentId=doc["agentId"],
-            status=ExecutionStatus.RUNNING,
-            startedAt=now,
-        )
+        return doc_to_model(doc, ExecutionResponse)
 
     @staticmethod
     async def get_execution(execution_id: str) -> Optional[ExecutionResponse]:
@@ -41,14 +36,7 @@ class ExecutionService:
         )
         if not doc:
             return None
-        return ExecutionResponse(
-            id=str(doc["_id"]),
-            taskId=doc["taskId"],
-            agentId=doc["agentId"],
-            status=doc["status"],
-            startedAt=doc["startedAt"],
-            endedAt=doc.get("endedAt"),
-        )
+        return doc_to_model(doc, ExecutionResponse)
 
     @staticmethod
     async def get_execution_by_task(task_id: str) -> Optional[ExecutionResponse]:
@@ -59,14 +47,7 @@ class ExecutionService:
         )
         if not doc:
             return None
-        return ExecutionResponse(
-            id=str(doc["_id"]),
-            taskId=doc["taskId"],
-            agentId=doc["agentId"],
-            status=doc["status"],
-            startedAt=doc["startedAt"],
-            endedAt=doc.get("endedAt"),
-        )
+        return doc_to_model(doc, ExecutionResponse)
 
     @staticmethod
     async def complete_execution(
@@ -103,16 +84,7 @@ class ExecutionService:
         }
         result = await db.execution_steps.insert_one(doc)
         doc["_id"] = result.inserted_id
-        return ExecutionStepResponse(
-            id=str(doc["_id"]),
-            executionId=doc["executionId"],
-            taskId=doc["taskId"],
-            agentId=doc["agentId"],
-            stepType=step_type,
-            content=doc["content"],
-            meta=doc["meta"],
-            createdAt=now,
-        )
+        return doc_to_model(doc, ExecutionStepResponse)
 
     @staticmethod
     async def get_steps(execution_id: str) -> list[ExecutionStepResponse]:
@@ -121,19 +93,7 @@ class ExecutionService:
             "createdAt", 1
         )
         docs = await cursor.to_list(length=500)
-        return [
-            ExecutionStepResponse(
-                id=str(doc["_id"]),
-                executionId=doc["executionId"],
-                taskId=doc["taskId"],
-                agentId=doc["agentId"],
-                stepType=doc["stepType"],
-                content=doc["content"],
-                meta=doc.get("meta", {}),
-                createdAt=doc["createdAt"],
-            )
-            for doc in docs
-        ]
+        return [doc_to_model(doc, ExecutionStepResponse) for doc in docs]
 
     @staticmethod
     async def count_active() -> int:
