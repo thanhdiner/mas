@@ -848,17 +848,25 @@ export default function WebhooksPage() {
     const validPaths = new Set(
       testNotificationPreview?.changedEntries.map((entry) => entry.path) ?? []
     );
-    setExpandedChangedPreviewPaths((current) =>
-      Array.from(
+    setExpandedChangedPreviewPaths((current) => {
+      const next = Array.from(
         new Set([
           ...current.filter((path) => validPaths.has(path)),
           ...effectivePinnedChangedPreviewPaths.filter((path) => validPaths.has(path)),
         ])
-      )
-    );
-    setPinnedChangedPreviewPaths((current) =>
-      current.filter((path) => validPaths.has(path))
-    );
+      );
+      if (next.length === current.length && next.every((val, i) => val === current[i])) {
+        return current;
+      }
+      return next;
+    });
+    setPinnedChangedPreviewPaths((current) => {
+      const next = current.filter((path) => validPaths.has(path));
+      if (next.length === current.length) {
+        return current;
+      }
+      return next;
+    });
   }, [
     effectivePinnedChangedPreviewPaths,
     testNotificationPreview,
