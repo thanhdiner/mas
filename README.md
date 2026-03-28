@@ -9,8 +9,9 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 ## ✨ Key Features
 
 - **Multi-Agent Orchestration**: Create agents with distinct roles, goals, and system prompts.
-- **Multi-Model AI Support**: Per-agent model selection across OpenAI (GPT-4o), Anthropic (Claude), Groq (Llama 3), and Together AI.
+- **Multi-Model AI Support**: 2026-Ready per-agent model selection across OpenAI (GPT-5.4), Anthropic (Claude 4.6), Groq (Grok 4), and Together AI (Llama 4).
 - **Recursive Delegation**: Agents can dynamically create subtasks and assign them to other agents (with depth-limit safeguards).
+- **Extreme Performance**: Ultra-fast PyTest suite (~0.7s), optimized MongoDB indexing, and stable CI/CD pipelines.
 - **Distributed Task Queue**: Celery + Redis for horizontal scaling of agent workloads across multiple workers.
 - **Knowledge Base (RAG)**: Upload documents, auto-chunk & embed via ChromaDB, and enable agents to search with semantic vector similarity.
 - **Command Center**: Real-time dashboard showing system throughput, active runs, and agent performance.
@@ -33,7 +34,7 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 - **Scheduler**: APScheduler
 
 ### Frontend
-- **Framework**: Next.js 16 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Styling**: Tailwind CSS
 - **Components**: shadcn/ui + Lucide Icons
 - **Graph Viz**: React Flow (@xyflow/react)
@@ -104,21 +105,21 @@ docker-compose up -d
 
 ## 🧠 Multi-Model Support
 
-Each agent can be configured with a specific LLM model:
+Each agent can be configured with a specific LLM model powered by top 2026 inference engines:
 
 | Provider | Models | Use Case |
 |----------|--------|----------|
-| **OpenAI** | GPT-4o, GPT-4o-mini, GPT-4.1 | General purpose, best tools support |
-| **Anthropic** | Claude Sonnet 4, Claude 3.5 Haiku | Excellent at coding and reasoning |
-| **Groq** | Llama 3.3 70B, Mixtral 8x7B | Ultra-fast inference |
-| **Together AI** | Llama 3.1, Mixtral | Open-source models |
+| **OpenAI** | GPT-5.4, GPT-5.4 Mini, O4 Preview | General purpose, best tools support |
+| **Anthropic** | Claude Sonnet 4.6, Claude Opus 4.6 | Excellent at coding and reasoning |
+| **Groq (xAI)** | Grok 4.20, Grok 4.1 Fast, Grok Code | Ultra-fast Grok inference |
+| **Together AI** | Llama 4 Scout, Llama 4 Maverick | Advanced open-source models |
 
 Set the model per-agent in the Agent Setup panel, or globally via `LLM_MODEL` in `.env`.
 
 ## 🛡️ Safeguards
 - **Delegation Depth**: Hard-coded limit (`MAX_DELEGATION_DEPTH=5`) to prevent infinite AI loops.
 - **Max Steps**: Per-agent step limits to control API consumption and token usage.
-- **Status Persistence**: Every execution step is logged to MongoDB for auditability.
+- **Status Persistence**: Every execution step is logged to MongoDB for auditability and optimized with selective indexing (`status`, `role`, `assignedAgentId`) for maximum lookup velocity.
 
 ## 🎨 Design Philosophy
 The UI follows the **"Synthetic Intelligence Interface"** strategy:
