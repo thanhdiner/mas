@@ -1927,191 +1927,6 @@ export default function WebhooksPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-surface-container p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
-                    Alert Hook
-                  </p>
-                  <p className="mt-1 text-sm text-on-surface-dim">
-                    Sends backlog alerts to a configured webhook, which can point
-                    to Slack incoming webhooks or an email-notification service.
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
-                    !runtimeHealth.alerting.configured
-                      ? "bg-white/5 text-on-surface-dim"
-                      : runtimeHealth.alerting.lastStatus === "failed"
-                        ? "bg-[#ffb4ab1a] text-[#ffb4ab]"
-                        : runtimeHealth.alerting.lastStatus === "sent"
-                          ? "bg-[#14b8a61a] text-[#5eead4]"
-                          : "bg-[#7bd0ff14] text-accent-cyan"
-                  }`}
-                >
-                  {runtimeHealth.alerting.lastStatus}
-                </span>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={previewingNotificationKind !== null}
-                  onClick={() => handlePreviewTestNotification("alert")}
-                  className="border-0 bg-surface-low text-foreground disabled:opacity-50"
-                >
-                  <Eye
-                    className={`mr-2 h-4 w-4 ${
-                      previewingNotificationKind === "alert"
-                        ? "animate-pulse"
-                        : ""
-                    }`}
-                  />
-                  Preview Alert Payload
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={previewingNotificationKind !== null}
-                  onClick={() => handlePreviewTestNotification("resolved")}
-                  className="border-0 bg-surface-low text-foreground disabled:opacity-50"
-                >
-                  <Eye
-                    className={`mr-2 h-4 w-4 ${
-                      previewingNotificationKind === "resolved"
-                        ? "animate-pulse"
-                        : ""
-                    }`}
-                  />
-                  Preview Resolved Payload
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={
-                    !runtimeHealth.alerting.configured ||
-                    testingNotificationKind !== null
-                  }
-                  onClick={() => handleSendTestNotification("alert")}
-                  className="border-0 bg-surface-low text-foreground disabled:opacity-50"
-                >
-                  <RefreshCw
-                    className={`mr-2 h-4 w-4 ${
-                      testingNotificationKind === "alert" ? "animate-spin" : ""
-                    }`}
-                  />
-                  Send Test Alert
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={
-                    !runtimeHealth.alerting.configured ||
-                    testingNotificationKind !== null
-                  }
-                  onClick={() => handleSendTestNotification("resolved")}
-                  className="border-0 bg-surface-low text-foreground disabled:opacity-50"
-                >
-                  <RefreshCw
-                    className={`mr-2 h-4 w-4 ${
-                      testingNotificationKind === "resolved"
-                        ? "animate-spin"
-                        : ""
-                    }`}
-                  />
-                  Send Test Resolved
-                </Button>
-                {!runtimeHealth.alerting.configured && (
-                  <p className="text-xs text-on-surface-dim">
-                    Configure <code>WEBHOOK_DELIVERY_BACKLOG_ALERT_WEBHOOK_URL</code>{" "}
-                    on the backend to enable live tests.
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl bg-surface-low p-4">
-                  <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
-                    Transport
-                  </p>
-                  <div className="mt-2 space-y-1 text-sm text-foreground">
-                    <p>
-                      {runtimeHealth.alerting.configured
-                        ? `${runtimeHealth.alerting.transport} configured`
-                        : "No alert webhook configured"}
-                    </p>
-                    <p>
-                      Cooldown: {runtimeHealth.alerting.cooldownMinutes} minutes
-                    </p>
-                    <p>
-                      Timeout: {runtimeHealth.alerting.timeoutSeconds} seconds
-                    </p>
-                    <p>
-                      Incident:{" "}
-                      {runtimeHealth.alerting.incidentOpen ? "Open" : "Clear"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-surface-low p-4">
-                  <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
-                    Delivery Status
-                  </p>
-                  <div className="mt-2 space-y-1 text-sm text-foreground">
-                    <p>
-                      Last Attempt:{" "}
-                      {formatTimestamp(runtimeHealth.alerting.lastAttemptAt)}
-                    </p>
-                    <p>
-                      Last Sent: {formatTimestamp(runtimeHealth.alerting.lastSentAt)}
-                    </p>
-                  </div>
-                  {runtimeHealth.alerting.lastError && (
-                    <p className="mt-3 text-sm text-[#ffb4ab]">
-                      {runtimeHealth.alerting.lastError}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-2xl bg-surface-low p-4">
-                <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
-                  Resolved Notification
-                </p>
-                <div className="mt-2 grid gap-3 md:grid-cols-[auto_1fr]">
-                  <span
-                    className={`inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
-                      runtimeHealth.alerting.lastResolvedStatus === "sent"
-                        ? "bg-[#14b8a61a] text-[#5eead4]"
-                        : runtimeHealth.alerting.lastResolvedStatus === "failed"
-                          ? "bg-[#ffb4ab1a] text-[#ffb4ab]"
-                          : "bg-white/5 text-on-surface-dim"
-                    }`}
-                  >
-                    {runtimeHealth.alerting.lastResolvedStatus}
-                  </span>
-                  <div className="space-y-1 text-sm text-foreground">
-                    <p>
-                      Last Attempt:{" "}
-                      {formatTimestamp(
-                        runtimeHealth.alerting.lastResolvedAttemptAt
-                      )}
-                    </p>
-                    <p>
-                      Last Sent:{" "}
-                      {formatTimestamp(runtimeHealth.alerting.lastResolvedSentAt)}
-                    </p>
-                  </div>
-                </div>
-                {runtimeHealth.alerting.lastResolvedError && (
-                  <p className="mt-3 text-sm text-[#ffb4ab]">
-                    {runtimeHealth.alerting.lastResolvedError}
-                  </p>
-                )}
-              </div>
-            </div>
-
             {runtimeHealth.oldestExpiredDeliveryAt && (
               <div className="mt-4 rounded-2xl bg-surface-container p-4">
                 <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
@@ -2125,6 +1940,194 @@ export default function WebhooksPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          <div
+            className="h-fit rounded-3xl border border-white/5 p-5 shadow-sm"
+            style={{ background: "var(--surface-base)" }}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-foreground">
+                  Alert Hook
+                </h2>
+                <p className="mt-1 text-sm text-on-surface-dim">
+                  Sends backlog alerts to a configured webhook, which can point
+                  to Slack incoming webhooks or an email-notification service.
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
+                  !runtimeHealth.alerting.configured
+                    ? "bg-white/5 text-on-surface-dim"
+                    : runtimeHealth.alerting.lastStatus === "failed"
+                      ? "bg-[#ffb4ab1a] text-[#ffb4ab]"
+                      : runtimeHealth.alerting.lastStatus === "sent"
+                        ? "bg-[#14b8a61a] text-[#5eead4]"
+                        : "bg-[#7bd0ff14] text-accent-cyan"
+                }`}
+              >
+                {runtimeHealth.alerting.lastStatus}
+              </span>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={previewingNotificationKind !== null}
+                onClick={() => handlePreviewTestNotification("alert")}
+                className="border-0 bg-surface-container text-foreground disabled:opacity-50"
+              >
+                <Eye
+                  className={`mr-2 h-4 w-4 ${
+                    previewingNotificationKind === "alert"
+                      ? "animate-pulse"
+                      : ""
+                  }`}
+                />
+                Preview Alert Payload
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={previewingNotificationKind !== null}
+                onClick={() => handlePreviewTestNotification("resolved")}
+                className="border-0 bg-surface-container text-foreground disabled:opacity-50"
+              >
+                <Eye
+                  className={`mr-2 h-4 w-4 ${
+                    previewingNotificationKind === "resolved"
+                      ? "animate-pulse"
+                      : ""
+                  }`}
+                />
+                Preview Resolved Payload
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={
+                  !runtimeHealth.alerting.configured ||
+                  testingNotificationKind !== null
+                }
+                onClick={() => handleSendTestNotification("alert")}
+                className="border-0 bg-surface-container text-foreground disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${
+                    testingNotificationKind === "alert" ? "animate-spin" : ""
+                  }`}
+                />
+                Send Test Alert
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={
+                  !runtimeHealth.alerting.configured ||
+                  testingNotificationKind !== null
+                }
+                onClick={() => handleSendTestNotification("resolved")}
+                className="border-0 bg-surface-container text-foreground disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${
+                    testingNotificationKind === "resolved"
+                      ? "animate-spin"
+                      : ""
+                  }`}
+                />
+                Send Test Resolved
+              </Button>
+              {!runtimeHealth.alerting.configured && (
+                <p className="mt-2 w-full text-xs text-on-surface-dim">
+                  Configure <code>WEBHOOK_DELIVERY_BACKLOG_ALERT_WEBHOOK_URL</code>{" "}
+                  on the backend to enable live tests.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl bg-surface-container p-4">
+                <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
+                  Transport
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-foreground">
+                  <p>
+                    {runtimeHealth.alerting.configured
+                      ? `${runtimeHealth.alerting.transport} configured`
+                      : "No alert webhook configured"}
+                  </p>
+                  <p>
+                    Cooldown: {runtimeHealth.alerting.cooldownMinutes} minutes
+                  </p>
+                  <p>
+                    Timeout: {runtimeHealth.alerting.timeoutSeconds} seconds
+                  </p>
+                  <p>
+                    Incident:{" "}
+                    {runtimeHealth.alerting.incidentOpen ? "Open" : "Clear"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-surface-container p-4">
+                <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
+                  Delivery Status
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-foreground">
+                  <p>
+                    Last Attempt:{" "}
+                    {formatTimestamp(runtimeHealth.alerting.lastAttemptAt)}
+                  </p>
+                  <p>
+                    Last Sent: {formatTimestamp(runtimeHealth.alerting.lastSentAt)}
+                  </p>
+                </div>
+                {runtimeHealth.alerting.lastError && (
+                  <p className="mt-3 text-sm text-[#ffb4ab]">
+                    {runtimeHealth.alerting.lastError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-surface-container p-4">
+              <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
+                Resolved Notification
+              </p>
+              <div className="mt-2 grid gap-3 md:grid-cols-[auto_1fr]">
+                <span
+                  className={`inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
+                    runtimeHealth.alerting.lastResolvedStatus === "sent"
+                      ? "bg-[#14b8a61a] text-[#5eead4]"
+                      : runtimeHealth.alerting.lastResolvedStatus === "failed"
+                        ? "bg-[#ffb4ab1a] text-[#ffb4ab]"
+                        : "bg-white/5 text-on-surface-dim"
+                  }`}
+                >
+                  {runtimeHealth.alerting.lastResolvedStatus}
+                </span>
+                <div className="space-y-1 text-sm text-foreground">
+                  <p>
+                    Last Attempt:{" "}
+                    {formatTimestamp(
+                      runtimeHealth.alerting.lastResolvedAttemptAt
+                    )}
+                  </p>
+                  <p>
+                    Last Sent:{" "}
+                    {formatTimestamp(runtimeHealth.alerting.lastResolvedSentAt)}
+                  </p>
+                </div>
+              </div>
+              {runtimeHealth.alerting.lastResolvedError && (
+                <p className="mt-3 text-sm text-[#ffb4ab]">
+                  {runtimeHealth.alerting.lastResolvedError}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
