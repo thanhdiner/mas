@@ -21,6 +21,22 @@ async def connect_db():
     await db.execution_steps.create_index("executionId")
     await db.approvals.create_index("taskId")
     await db.tool_settings.create_index("name", unique=True)
+    await db.tool_credentials.create_index("name", unique=True)
+    await db.tool_presets.create_index([("toolName", 1), ("name", 1)], unique=True)
+    await db.tool_presets.create_index([("toolName", 1), ("createdAt", -1)])
+    await db.webhooks.create_index("tokenHash", unique=True)
+    await db.webhooks.create_index("agentId")
+    await db.webhooks.create_index("active")
+    await db.webhook_idempotency.create_index(
+        [("webhookId", 1), ("idempotencyKeyHash", 1)],
+        unique=True,
+    )
+    await db.webhook_idempotency.create_index("createdAt")
+    await db.webhook_idempotency.create_index("updatedAt")
+    await db.webhook_deliveries.create_index([("webhookId", 1), ("receivedAt", -1)])
+    await db.webhook_deliveries.create_index([("webhookId", 1), ("status", 1), ("receivedAt", -1)])
+    await db.webhook_deliveries.create_index("receivedAt")
+    await db.webhook_runtime_state.create_index("type", unique=True)
     await db.schedules.create_index("isActive")
     await db.knowledge.create_index("name")
 

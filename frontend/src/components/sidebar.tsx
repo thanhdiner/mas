@@ -14,6 +14,7 @@ import {
   MessageSquare,
   ShieldCheck,
   BookOpen,
+  Webhook as WebhookIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -42,6 +43,11 @@ const navGroups = [
     href: "/tools",
     label: "Tools Library",
     icon: Wrench,
+  },
+  {
+    href: "/webhooks",
+    label: "Webhooks",
+    icon: WebhookIcon,
   },
   {
     href: "/schedules",
@@ -142,7 +148,7 @@ export function Sidebar() {
               <Link
                 key={group.href}
                 href={group.href!}
-                className={`group flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
+                className={`relative group flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
                   isActive
                     ? "text-accent-cyan bg-surface-high shadow-sm"
                     : "text-on-surface-dim hover:text-foreground hover:bg-surface-container"
@@ -221,7 +227,7 @@ export function Sidebar() {
         {/* Profile Link */}
         <Link
           href="/profile"
-          className={`group flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
+          className={`relative group flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
             pathname === "/profile"
               ? "text-accent-cyan bg-surface-high shadow-sm"
               : "text-on-surface-dim hover:text-foreground hover:bg-surface-container"

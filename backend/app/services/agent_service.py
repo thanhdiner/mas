@@ -17,6 +17,7 @@ def _doc_to_response(doc: dict) -> AgentResponse:
         description=doc.get("description", ""),
         systemPrompt=doc.get("systemPrompt", ""),
         allowedTools=doc.get("allowedTools", []),
+        toolConfig=doc.get("toolConfig", {}),
         allowedSubAgents=doc.get("allowedSubAgents", []),
         maxSteps=doc.get("maxSteps", 10),
         active=doc.get("active", True),

@@ -79,6 +79,11 @@ def _bootstrap():
     modules = [
         "app.tools.web_search",
         "app.tools.read_website",
+        "app.tools.http_request",
+        "app.tools.slack",
+        "app.tools.notion",
+        "app.tools.github",
+        "app.tools.gmail",
         "app.tools.execute_code",
         "app.tools.write_file",
     ]

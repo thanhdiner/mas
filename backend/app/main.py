@@ -14,6 +14,7 @@ from app.routes import (
     ws_router,
     auth_router,
     tools_router,
+    webhooks_router,
     schedules_router,
     playground_router,
     knowledge_router,
@@ -56,6 +57,7 @@ app.include_router(executions_router, prefix=settings.API_PREFIX)
 app.include_router(auth_router, prefix=settings.API_PREFIX + "/auth")
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 app.include_router(tools_router, prefix=settings.API_PREFIX)
+app.include_router(webhooks_router, prefix=settings.API_PREFIX)
 app.include_router(schedules_router, prefix=settings.API_PREFIX)
 app.include_router(playground_router, prefix=settings.API_PREFIX)
 app.include_router(knowledge_router, prefix=settings.API_PREFIX)
@@ -74,4 +76,3 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
-

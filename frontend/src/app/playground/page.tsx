@@ -129,7 +129,7 @@ export default function PlaygroundPage() {
             handleClear();
           }}
         >
-          <SelectTrigger className="bg-surface-high border-0 text-foreground max-w-xs">
+          <SelectTrigger className="bg-surface-high border-0 text-foreground max-w-md">
             <SelectValue placeholder="Select an agent..." />
           </SelectTrigger>
           <SelectContent

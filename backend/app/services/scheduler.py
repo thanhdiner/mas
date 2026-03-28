@@ -11,6 +11,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from app.config import get_settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -20,8 +21,10 @@ from bson import ObjectId
 from app.database import get_db
 
 logger = logging.getLogger("scheduler")
+settings = get_settings()
 
 scheduler: Optional[AsyncIOScheduler] = None
+WEBHOOK_CLEANUP_JOB_ID = "system_webhook_runtime_cleanup"
 
 
 def get_scheduler() -> AsyncIOScheduler:
@@ -56,6 +59,19 @@ async def start_scheduler():
 
     logger.info(f"Restored {restored} active schedule(s)")
 
+    await _cleanup_webhook_runtime_data()
+    sched.add_job(
+        _cleanup_webhook_runtime_data,
+        trigger=IntervalTrigger(
+            hours=settings.WEBHOOK_RUNTIME_CLEANUP_INTERVAL_HOURS,
+            timezone="UTC",
+        ),
+        id=WEBHOOK_CLEANUP_JOB_ID,
+        name="Webhook Runtime Cleanup",
+        replace_existing=True,
+    )
+    logger.info("Webhook runtime cleanup job scheduled")
+
 
 def stop_scheduler():
     """Gracefully shut down the scheduler."""
@@ -64,6 +80,18 @@ def stop_scheduler():
         scheduler.shutdown(wait=False)
         logger.info("APScheduler stopped")
     scheduler = None
+
+
+def get_webhook_cleanup_job_snapshot() -> dict[str, object]:
+    sched = get_scheduler()
+    if not sched.running:
+        return {"jobScheduled": False, "nextScheduledRunAt": None}
+
+    job = sched.get_job(WEBHOOK_CLEANUP_JOB_ID)
+    return {
+        "jobScheduled": job is not None,
+        "nextScheduledRunAt": job.next_run_time if job else None,
+    }
 
 
 # ─── Job lifecycle helpers ───────────────────────────────────────────
@@ -155,6 +183,65 @@ async def _execute_schedule(schedule_id: str):
         asyncio.create_task(orchestrator.execute_task(task_id))
     except Exception as exc:
         logger.error(f"Orchestrator launch failed for schedule {schedule_id}: {exc}")
+
+
+async def _cleanup_webhook_runtime_data():
+    started_at = datetime.now(timezone.utc)
+    try:
+        from app.services.webhook_service import WebhookService
+
+        result = await WebhookService.cleanup_expired_runtime_data()
+        finished_at = datetime.now(timezone.utc)
+        await WebhookService.record_cleanup_run(
+            status="success",
+            started_at=started_at,
+            finished_at=finished_at,
+            deliveries_deleted=result["deliveriesDeleted"],
+            idempotency_deleted=result["idempotencyDeleted"],
+        )
+        logger.info(
+            "Webhook runtime cleanup completed: deliveries=%s idempotency=%s",
+            result["deliveriesDeleted"],
+            result["idempotencyDeleted"],
+        )
+        job_snapshot = get_webhook_cleanup_job_snapshot()
+        try:
+            notification_event = await WebhookService.reconcile_backlog_notifications(
+                job_scheduled=bool(job_snapshot["jobScheduled"]),
+                next_scheduled_run_at=job_snapshot["nextScheduledRunAt"],
+            )
+            if notification_event == "alert":
+                logger.warning("Webhook backlog alert dispatched to configured webhook")
+            elif notification_event == "resolved":
+                logger.info("Webhook backlog resolved notification dispatched")
+        except Exception as alert_exc:
+            logger.warning(f"Webhook backlog alert dispatch failed: {alert_exc}")
+    except Exception as exc:
+        finished_at = datetime.now(timezone.utc)
+        try:
+            from app.services.webhook_service import WebhookService
+
+            await WebhookService.record_cleanup_run(
+                status="failed",
+                started_at=started_at,
+                finished_at=finished_at,
+                error=str(exc),
+            )
+            job_snapshot = get_webhook_cleanup_job_snapshot()
+            try:
+                notification_event = await WebhookService.reconcile_backlog_notifications(
+                    job_scheduled=bool(job_snapshot["jobScheduled"]),
+                    next_scheduled_run_at=job_snapshot["nextScheduledRunAt"],
+                )
+                if notification_event == "alert":
+                    logger.warning("Webhook backlog alert dispatched after cleanup failure")
+                elif notification_event == "resolved":
+                    logger.info("Webhook backlog resolved notification dispatched")
+            except Exception as alert_exc:
+                logger.warning(f"Webhook backlog alert dispatch failed: {alert_exc}")
+        except Exception:
+            pass
+        logger.warning(f"Webhook runtime cleanup failed: {exc}")
 
 
 # ─── CRUD helpers (called by the route layer) ────────────────────────

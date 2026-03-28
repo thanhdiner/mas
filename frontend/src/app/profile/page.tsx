@@ -206,37 +206,37 @@ export default function ProfilePage() {
         description="Manage your account settings and security"
       />
 
-      <div className="max-w-3xl space-y-6">
-        {/* User Card */}
-        <div
-          className="relative rounded-2xl p-6 overflow-hidden"
-          style={{ background: "var(--surface-container)" }}
-        >
-          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-[#7bd0ff]/20 via-[#008abb]/10 to-transparent" />
+      <div className="max-w-5xl space-y-6 md:space-y-0 md:grid md:grid-cols-12 md:gap-6 w-full mb-10">
+        {/* Left Column */}
+        <div className="md:col-span-4 lg:col-span-4 space-y-6">
+          {/* User Card */}
+          <div
+            className="relative rounded-2xl p-6 overflow-hidden flex flex-col items-center text-center shadow-sm"
+            style={{ background: "var(--surface-container)" }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-[#7bd0ff]/20 via-[#008abb]/10 to-transparent" />
 
-          <div className="relative flex items-center gap-5">
-            {/* Avatar */}
-            <div className="relative group shrink-0">
+            <div className="relative mt-2 mb-4 group shrink-0">
               {(optimisticAvatar || user.avatar_url) ? (
                 <>
                   <img
                     src={optimisticAvatar || user.avatar_url!}
                     alt="Avatar"
-                    className={`w-20 h-20 rounded-2xl object-cover shadow-lg ${(uploadingAvatar || deletingAvatar) ? "opacity-50" : ""}`}
+                    className={`w-28 h-28 rounded-2xl object-cover shadow-xl border-4 border-[var(--surface-container)] ${(uploadingAvatar || deletingAvatar) ? "opacity-50" : ""}`}
                   />
                   {!uploadingAvatar && !deletingAvatar && (
                     <button
                       type="button"
                       onClick={handleDeleteAvatar}
-                      className="absolute -top-2 -right-2 bg-[#ffb4ab] hover:bg-[#ff897d] text-[#93000a] rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
+                      className="absolute -top-2 -right-2 bg-[#ffb4ab] hover:bg-[#ff897d] text-[#93000a] rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
                       title="Remove avatar"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </>
               ) : (
-                <div className={`w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center text-2xl font-heading font-bold text-[#060e20] shadow-lg ${(uploadingAvatar || deletingAvatar) ? "opacity-50" : ""}`}>
+                <div className={`w-28 h-28 rounded-2xl gradient-primary flex items-center justify-center text-3xl font-heading font-bold text-[#060e20] shadow-xl border-4 border-[var(--surface-container)] ${(uploadingAvatar || deletingAvatar) ? "opacity-50" : ""}`}>
                   {initials}
                 </div>
               )}
@@ -247,9 +247,9 @@ export default function ProfilePage() {
                 className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
               >
                 {(uploadingAvatar || deletingAvatar) ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
                 ) : (
-                  <Camera className="w-5 h-5 text-white" />
+                  <Camera className="w-6 h-6 text-white" />
                 )}
               </button>
               <input
@@ -260,20 +260,22 @@ export default function ProfilePage() {
                 onChange={handleAvatarUpload}
               />
             </div>
-            <div className="flex-1 min-w-0">
+
+            <div className="relative w-full z-10">
               <h2 className="text-xl font-heading font-semibold text-foreground truncate">
                 {user.full_name || "No name set"}
               </h2>
               <p
-                className="text-sm mt-0.5 flex items-center gap-1.5"
+                className="text-sm mt-1 flex items-center justify-center gap-1.5"
                 style={{ color: "var(--on-surface-dim)" }}
               >
                 <Mail className="w-3.5 h-3.5" />
                 {user.email}
               </p>
-              <div className="flex items-center gap-4 mt-2">
+              
+              <div className="flex flex-col items-center gap-2 mt-5 w-full">
                 <span
-                  className="text-[11px] flex items-center gap-1 px-2 py-0.5 rounded-full"
+                  className="text-xs flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full font-medium w-full"
                   style={{
                     background: user.is_active
                       ? "rgba(78, 222, 163, 0.15)"
@@ -281,20 +283,50 @@ export default function ProfilePage() {
                     color: user.is_active ? "#4edea3" : "#ffb4ab",
                   }}
                 >
-                  <Shield className="w-3 h-3" />
-                  {user.is_active ? "Active" : "Inactive"}
+                  <Shield className="w-4 h-4" />
+                  {user.is_active ? "Active Account" : "Inactive Account"}
                 </span>
                 <span
-                  className="text-[11px] flex items-center gap-1"
-                  style={{ color: "var(--on-surface-dim)" }}
+                  className="text-xs flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full font-medium w-full"
+                  style={{ background: "var(--surface-lowest)", color: "var(--on-surface-dim)" }}
                 >
-                  <Calendar className="w-3 h-3" />
+                  <Calendar className="w-4 h-4" />
                   Joined {new Date(user.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Account Details moved to right under User Card */}
+          <div
+            className="rounded-2xl p-6 shadow-sm"
+            style={{ background: "var(--surface-container)" }}
+          >
+            <h3 className="text-sm font-heading font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-accent-cyan" />
+              Account Details
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              <InfoCard label="User ID" value={user.id} mono />
+              <InfoCard
+                label="Status"
+                value={user.is_active ? "Active" : "Inactive"}
+                color={user.is_active ? "#4edea3" : "#ffb4ab"}
+              />
+              <InfoCard
+                label="Member Since"
+                value={new Date(user.created_at).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              />
+            </div>
+          </div>
         </div>
+
+        {/* Right Column - Forms */}
+        <div className="md:col-span-8 lg:col-span-8 space-y-6">
 
         {/* Profile Settings */}
         <div
@@ -522,31 +554,6 @@ export default function ProfilePage() {
           </form>
         </div>
 
-        {/* Account Info */}
-        <div
-          className="rounded-2xl p-6"
-          style={{ background: "var(--surface-container)" }}
-        >
-          <h3 className="text-sm font-heading font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-accent-cyan" />
-            Account Details
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <InfoCard label="User ID" value={user.id} mono />
-            <InfoCard
-              label="Status"
-              value={user.is_active ? "Active" : "Inactive"}
-              color={user.is_active ? "#4edea3" : "#ffb4ab"}
-            />
-            <InfoCard
-              label="Member Since"
-              value={new Date(user.created_at).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            />
-          </div>
         </div>
       </div>
     </>

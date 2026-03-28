@@ -12,6 +12,7 @@ const routes = [
   "/agents/canvas",
   "/tasks",
   "/tasks/new",
+  "/webhooks",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

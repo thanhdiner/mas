@@ -41,7 +41,7 @@ export interface Agent {
   description: string;
   systemPrompt: string;
   allowedTools: string[];
-  toolConfig?: Record<string, Record<string, any>>;
+  toolConfig?: Record<string, Record<string, unknown>>;
   allowedSubAgents: string[];
   maxSteps: number;
   active: boolean;
@@ -142,6 +142,12 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface RegisterInput {
+  email: string;
+  password: string;
+  full_name?: string;
+}
+
 interface APIErrorPayload {
   code?: string;
   message?: string;
@@ -233,6 +239,53 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+async function fetchFile(
+  path: string,
+  options?: RequestInit
+): Promise<{ blob: Blob; filename: string | null }> {
+  const headers: Record<string, string> = {};
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("mas_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { ...headers, ...(options?.headers || {}) },
+    ...options,
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("mas_token");
+      if (
+        !window.location.pathname.includes("/login") &&
+        !window.location.pathname.includes("/register")
+      ) {
+        window.location.href = "/login";
+      }
+    }
+
+    const errorPayload = await res.json().catch(() => null);
+    const error = parseAPIError(errorPayload, res.statusText || "API Error");
+    throw new APIError(error.message || "API Error", {
+      code: error.code,
+      status: res.status,
+      detail: error.detail,
+    });
+  }
+
+  const contentDisposition = res.headers.get("content-disposition") || "";
+  const filenameMatch = contentDisposition.match(/filename="([^"]+)"/i);
+
+  return {
+    blob: await res.blob(),
+    filename: filenameMatch ? filenameMatch[1] : null,
+  };
+}
+
 export const api = {
   agents: {
     list: (activeOnly = false) =>
@@ -309,8 +362,8 @@ export const api = {
         }
       );
     },
-    register: (data: any) =>
-      fetchAPI<any>("/auth/register", {
+    register: (data: RegisterInput) =>
+      fetchAPI<UserProfile>("/auth/register", {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -355,17 +408,125 @@ export const api = {
   },
 
   tools: {
-    list: () => fetchAPI<{ 
-      name: string; 
-      description: string;
-      configSchema?: { name: string; type: "string" | "number"; label: string; description: string; default: any }[];
-      globalSettings?: Record<string, any>;
-    }[]>("/tools"),
-    updateSettings: (toolName: string, settings: Record<string, any>) => 
-      fetchAPI<any>(`/tools/${toolName}/settings`, {
+    list: () => fetchAPI<ToolCatalogItem[]>("/tools"),
+    updateSettings: (toolName: string, settings: Record<string, unknown>) => 
+      fetchAPI<{ message: string; tool: string; settings: Record<string, unknown> }>(`/tools/${toolName}/settings`, {
         method: "PATCH",
         body: JSON.stringify(settings)
       }),
+    listPresets: (toolName?: string) =>
+      fetchAPI<ToolPreset[]>(
+        `/tools/presets${toolName ? `?tool_name=${encodeURIComponent(toolName)}` : ""}`
+      ),
+    createPreset: (data: ToolPresetCreateInput) =>
+      fetchAPI<ToolPreset>("/tools/presets", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updatePreset: (presetId: string, data: ToolPresetUpdateInput) =>
+      fetchAPI<ToolPreset>(`/tools/presets/${presetId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    deletePreset: (presetId: string) =>
+      fetchAPI<{ message: string; presetId: string }>(`/tools/presets/${presetId}`, {
+        method: "DELETE",
+      }),
+    listCredentials: () => fetchAPI<ToolCredential[]>("/tools/credentials"),
+    createCredential: (data: ToolCredentialCreateInput) =>
+      fetchAPI<ToolCredential>("/tools/credentials", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updateCredential: (credentialId: string, data: ToolCredentialUpdateInput) =>
+      fetchAPI<ToolCredential>(`/tools/credentials/${credentialId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    deleteCredential: (credentialId: string) =>
+      fetchAPI<{ message: string; credentialId: string }>(
+        `/tools/credentials/${credentialId}`,
+        {
+          method: "DELETE",
+        }
+      ),
+  },
+
+  webhooks: {
+    list: () => fetchAPI<Webhook[]>("/webhooks"),
+    create: (data: WebhookCreateInput) =>
+      fetchAPI<WebhookSecret>("/webhooks", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (webhookId: string, data: WebhookUpdateInput) =>
+      fetchAPI<Webhook>(`/webhooks/${webhookId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (webhookId: string) =>
+      fetchAPI<{ message: string; webhookId: string }>(`/webhooks/${webhookId}`, {
+        method: "DELETE",
+      }),
+    rotateToken: (webhookId: string) =>
+      fetchAPI<WebhookSecret>(`/webhooks/${webhookId}/rotate-token`, {
+        method: "POST",
+      }),
+    listDeliveries: (
+      webhookId: string,
+      params?: {
+        status?: WebhookDelivery["status"];
+        from?: string;
+        to?: string;
+        skip?: number;
+        limit?: number;
+      }
+    ) => {
+      const query = new URLSearchParams();
+      if (params?.status) query.set("status", params.status);
+      if (params?.from) query.set("from", params.from);
+      if (params?.to) query.set("to", params.to);
+      if (typeof params?.skip === "number") {
+        query.set("skip", String(params.skip));
+      }
+      if (typeof params?.limit === "number") {
+        query.set("limit", String(params.limit));
+      }
+      const suffix = query.toString();
+      return fetchAPI<WebhookDeliveryPage>(
+        `/webhooks/${webhookId}/deliveries${suffix ? `?${suffix}` : ""}`
+      );
+    },
+    exportDeliveries: (
+      webhookId: string,
+      params?: {
+        status?: WebhookDelivery["status"];
+        from?: string;
+        to?: string;
+      }
+    ) => {
+      const query = new URLSearchParams();
+      if (params?.status) query.set("status", params.status);
+      if (params?.from) query.set("from", params.from);
+      if (params?.to) query.set("to", params.to);
+      const suffix = query.toString();
+      return fetchFile(
+        `/webhooks/${webhookId}/deliveries/export${suffix ? `?${suffix}` : ""}`
+      );
+    },
+    getRuntimeHealth: () =>
+      fetchAPI<WebhookRuntimeHealth>("/webhooks/runtime-health"),
+    getTestNotificationPreview: (kind: WebhookTestNotification["kind"]) =>
+      fetchAPI<WebhookTestNotificationPreview>(
+        `/webhooks/runtime-health/test-notification-preview?kind=${kind}`
+      ),
+    sendTestNotification: (kind: WebhookTestNotification["kind"]) =>
+      fetchAPI<WebhookTestNotification>(
+        `/webhooks/runtime-health/test-notification?kind=${kind}`,
+        {
+          method: "POST",
+        }
+      ),
   },
 
   schedules: {
@@ -400,7 +561,7 @@ export const api = {
   knowledge: {
     list: () => fetchAPI<KnowledgeDoc[]>("/knowledge"),
     get: (id: string) => fetchAPI<KnowledgeDoc & { textPreview: string }>(`/knowledge/${id}`),
-    upload: async (file: File, name?: string, description?: string, tags?: string): Promise<any> => {
+    upload: async (file: File, name?: string, description?: string, tags?: string): Promise<KnowledgeDoc> => {
       const token = typeof window !== "undefined" ? localStorage.getItem("mas_token") : null;
       const formData = new FormData();
       formData.append("file", file);
@@ -485,4 +646,195 @@ export interface KnowledgeDoc {
   fileType: string;
   tags: string[];
   uploadedAt: string;
+}
+
+export interface ToolConfigField {
+  name: string;
+  type: "string" | "number";
+  label: string;
+  description: string;
+  default: string | number;
+}
+
+export interface ToolPreset {
+  id: string;
+  name: string;
+  description: string;
+  toolName: string;
+  values: Record<string, string | number>;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface ToolCatalogItem {
+  name: string;
+  description: string;
+  configSchema?: ToolConfigField[];
+  globalSettings?: Record<string, unknown>;
+  presets?: ToolPreset[];
+}
+
+export interface ToolCredential {
+  id: string;
+  name: string;
+  description: string;
+  headerKeys: string[];
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface ToolCredentialCreateInput {
+  name: string;
+  description?: string;
+  headers: Record<string, string>;
+}
+
+export interface ToolCredentialUpdateInput {
+  name?: string;
+  description?: string;
+  headers?: Record<string, string>;
+}
+
+export interface ToolPresetCreateInput {
+  name: string;
+  description?: string;
+  toolName: string;
+  values: Record<string, string | number>;
+}
+
+export interface ToolPresetUpdateInput {
+  name?: string;
+  description?: string;
+  values?: Record<string, string | number>;
+}
+
+export interface Webhook {
+  id: string;
+  name: string;
+  description: string;
+  agentId: string;
+  agentName?: string | null;
+  taskTitle: string;
+  allowDelegation: boolean;
+  requiresApproval: boolean;
+  active: boolean;
+  lastTriggeredAt?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface WebhookSecret extends Webhook {
+  token: string;
+  triggerUrl: string;
+}
+
+export interface WebhookCreateInput {
+  name: string;
+  description?: string;
+  agentId: string;
+  taskTitle: string;
+  allowDelegation?: boolean;
+  requiresApproval?: boolean;
+  active?: boolean;
+}
+
+export interface WebhookUpdateInput {
+  name?: string;
+  description?: string;
+  agentId?: string;
+  taskTitle?: string;
+  allowDelegation?: boolean;
+  requiresApproval?: boolean;
+  active?: boolean;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhookId: string;
+  status: "processing" | "accepted" | "duplicate" | "failed";
+  taskId?: string | null;
+  duplicate: boolean;
+  idempotencyKey?: string | null;
+  requestMethod: string;
+  contentType?: string | null;
+  payloadPreview?: string | null;
+  payloadSizeBytes: number;
+  payloadTruncated: boolean;
+  error?: string | null;
+  receivedAt: string;
+  updatedAt?: string | null;
+}
+
+export interface WebhookDeliveryPage {
+  items: WebhookDelivery[];
+  total: number;
+  skip: number;
+  limit: number;
+  hasMore: boolean;
+  status?: WebhookDelivery["status"] | null;
+  fromTime?: string | null;
+  toTime?: string | null;
+}
+
+export interface WebhookCleanupStatus {
+  lastRunAt?: string | null;
+  lastSuccessAt?: string | null;
+  lastStatus: "never_run" | "success" | "failed";
+  lastDurationMs?: number | null;
+  deliveriesDeleted: number;
+  idempotencyDeleted: number;
+  lastError?: string | null;
+}
+
+export interface WebhookAlertingStatus {
+  configured: boolean;
+  transport: string;
+  cooldownMinutes: number;
+  timeoutSeconds: number;
+  incidentOpen: boolean;
+  lastAttemptAt?: string | null;
+  lastSentAt?: string | null;
+  lastStatus: "disabled" | "idle" | "sent" | "failed";
+  lastError?: string | null;
+  lastResolvedAttemptAt?: string | null;
+  lastResolvedSentAt?: string | null;
+  lastResolvedStatus: "disabled" | "idle" | "sent" | "failed";
+  lastResolvedError?: string | null;
+}
+
+export interface WebhookRuntimeHealth {
+  deliveryRetentionDays: number;
+  idempotencyRetentionDays: number;
+  cleanupIntervalHours: number;
+  deliveryBacklogAlertThresholdHours: number;
+  deliveryCutoff: string;
+  idempotencyCutoff: string;
+  expiredDeliveriesPending: number;
+  expiredIdempotencyPending: number;
+  oldestExpiredDeliveryAt?: string | null;
+  deliveryBacklogAlert: boolean;
+  deliveryBacklogAlertMessage?: string | null;
+  deliveryRetentionIndexReady: boolean;
+  idempotencyRetentionIndexReady: boolean;
+  deliveryListIndexReady: boolean;
+  jobScheduled: boolean;
+  nextScheduledRunAt?: string | null;
+  cleanup: WebhookCleanupStatus;
+  alerting: WebhookAlertingStatus;
+}
+
+export interface WebhookTestNotification {
+  message: string;
+  kind: "alert" | "resolved";
+  event: string;
+  sentAt: string;
+  test: boolean;
+}
+
+export interface WebhookTestNotificationPreview {
+  message: string;
+  kind: "alert" | "resolved";
+  event: string;
+  payload: Record<string, unknown>;
+  test: boolean;
 }
