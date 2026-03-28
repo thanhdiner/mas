@@ -23,8 +23,8 @@ def mock_settings():
     """Create mock settings."""
     settings = MagicMock()
     settings.MAX_DELEGATION_DEPTH = 5
-    settings.LLM_MODEL = "gpt-4o-mini"
-    settings.OPENAI_MODEL = "gpt-4o-mini"
+    settings.LLM_MODEL = "gpt-5.4-mini"
+    settings.OPENAI_MODEL = "gpt-5.4-mini"
     settings.OPENAI_API_KEY = "test-key"
     settings.LLM_PROVIDER = "openai"
     settings.CHROMADB_PATH = "./test_chroma"
@@ -236,7 +236,7 @@ class TestAgentModelSelection:
             from app.services.orchestrator import Orchestrator
             model, provider = Orchestrator._get_agent_model(mock_agent)
 
-        assert model == "gpt-4o-mini"
+        assert model == "gpt-5.4-mini"
         assert provider is None
 
 
@@ -307,19 +307,19 @@ class TestLLMProviderResolution:
 
     def test_openai_models(self):
         from app.services.llm_provider import _resolve_provider, LLMProviderType
-        assert _resolve_provider("gpt-4o-mini") == LLMProviderType.OPENAI
-        assert _resolve_provider("gpt-4o") == LLMProviderType.OPENAI
-        assert _resolve_provider("gpt-4.1-mini") == LLMProviderType.OPENAI
+        assert _resolve_provider("gpt-5.4-mini") == LLMProviderType.OPENAI
+        assert _resolve_provider("gpt-5.4") == LLMProviderType.OPENAI
+        assert _resolve_provider("o4-preview") == LLMProviderType.OPENAI
 
     def test_anthropic_models(self):
         from app.services.llm_provider import _resolve_provider, LLMProviderType
-        assert _resolve_provider("claude-sonnet-4-20250514") == LLMProviderType.ANTHROPIC
-        assert _resolve_provider("claude-3-5-haiku-20241022") == LLMProviderType.ANTHROPIC
+        assert _resolve_provider("claude-4.6-sonnet-20260215") == LLMProviderType.ANTHROPIC
+        assert _resolve_provider("claude-4.5-haiku-20251101") == LLMProviderType.ANTHROPIC
 
     def test_groq_models(self):
         from app.services.llm_provider import _resolve_provider, LLMProviderType
-        assert _resolve_provider("llama-3.3-70b-versatile") == LLMProviderType.GROQ
-        assert _resolve_provider("mixtral-8x7b-32768") == LLMProviderType.GROQ
+        assert _resolve_provider("grok-4.20") == LLMProviderType.GROQ
+        assert _resolve_provider("llama-4-scout") == LLMProviderType.GROQ
 
     def test_unknown_defaults_to_openai(self):
         from app.services.llm_provider import _resolve_provider, LLMProviderType

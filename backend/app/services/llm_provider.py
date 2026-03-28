@@ -61,7 +61,7 @@ def _resolve_provider(model: str) -> LLMProviderType:
         return LLMProviderType.OPENAI
     if model_lower.startswith(("claude",)):
         return LLMProviderType.ANTHROPIC
-    if model_lower.startswith(("llama", "mixtral", "gemma")):
+    if model_lower.startswith(("llama", "mixtral", "gemma", "grok")):
         return LLMProviderType.GROQ
     # Default to OpenAI  
     return LLMProviderType.OPENAI
@@ -415,19 +415,22 @@ class LLMProvider:
 
 AVAILABLE_MODELS = [
     # OpenAI
-    {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "provider": "openai", "description": "Fast & affordable. Best for most tasks."},
-    {"id": "gpt-4o", "name": "GPT-4o", "provider": "openai", "description": "Most capable OpenAI model."},
-    {"id": "gpt-4.1-mini", "name": "GPT-4.1 Mini", "provider": "openai", "description": "Latest compact model with coding improvements."},
-    {"id": "gpt-4.1", "name": "GPT-4.1", "provider": "openai", "description": "Latest frontier model."},
+    {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini", "provider": "openai", "description": "Fast & affordable. Best for most tasks."},
+    {"id": "gpt-5.4", "name": "GPT-5.4", "provider": "openai", "description": "Most capable OpenAI model."},
+    {"id": "gpt-5.4-nano", "name": "GPT-5.4 Nano", "provider": "openai", "description": "Latest ultra-compact model suitable for edge or simple routing."},
+    {"id": "o4-preview", "name": "O4 Preview", "provider": "openai", "description": "Latest reasoning frontier model."},
     # Anthropic
-    {"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "provider": "anthropic", "description": "Excellent at coding and reasoning."},
-    {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "provider": "anthropic", "description": "Fast and cost-effective."},
-    # Groq (fast inference)
-    {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "provider": "groq", "description": "Open-source, ultra-fast via Groq."},
-    {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B", "provider": "groq", "description": "Strong MoE model via Groq."},
-    # Together AI
-    {"id": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", "name": "Llama 3.1 70B (Together)", "provider": "together", "description": "Open-source via Together AI."},
-    {"id": "mistralai/Mixtral-8x7B-Instruct-v0.1", "name": "Mixtral 8x7B (Together)", "provider": "together", "description": "MoE model via Together AI."},
+    {"id": "claude-4.6-sonnet-20260215", "name": "Claude Sonnet 4.6", "provider": "anthropic", "description": "Excellent at coding and complex reasoning."},
+    {"id": "claude-4.6-opus-20260301", "name": "Claude Opus 4.6", "provider": "anthropic", "description": "Anthropic's most powerful frontier model."},
+    {"id": "claude-4.5-haiku-20251101", "name": "Claude 4.5 Haiku", "provider": "anthropic", "description": "Fast and cost-effective."},
+    # Groq (xAI & Fast Inference)
+    {"id": "grok-4.20", "name": "Grok 4.20", "provider": "groq", "description": "xAI's latest model with maximum wit."},
+    {"id": "grok-4.1-fast", "name": "Grok 4.1 Fast", "provider": "groq", "description": "Fast inference version of Grok 4.1."},
+    {"id": "grok-code", "name": "Grok Code", "provider": "groq", "description": "xAI's optimized coding model."},
+    # Together AI (Open Source)
+    {"id": "meta-llama/Llama-4-Scout", "name": "Llama 4 Scout", "provider": "together", "description": "Llama 4 base model."},
+    {"id": "meta-llama/Llama-4-Maverick", "name": "Llama 4 Maverick", "provider": "together", "description": "Llama 4 agile coding model."},
+    {"id": "deepseek-ai/DeepSeek-V4", "name": "DeepSeek V4", "provider": "together", "description": "The latest V4 offering from DeepSeek."},
 ]
 
 

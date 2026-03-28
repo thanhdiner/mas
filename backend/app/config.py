@@ -23,11 +23,11 @@ class Settings(BaseSettings):
 
     # LLM Providers
     LLM_PROVIDER: str = "openai"  # openai | anthropic | groq | together
-    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_MODEL: str = "gpt-5.4-mini"
 
     # OpenAI
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o-mini"  # Legacy fallback
+    OPENAI_MODEL: str = "gpt-5.4-mini"  # Legacy fallback
 
     # Anthropic
     ANTHROPIC_API_KEY: str = ""

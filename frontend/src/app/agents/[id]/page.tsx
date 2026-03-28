@@ -1532,7 +1532,7 @@ export default function AgentFormPage() {
                     let provider = "";
                     if (val.startsWith("gpt-") || val.startsWith("o1") || val.startsWith("o3") || val.startsWith("o4")) provider = "openai";
                     else if (val.startsWith("claude")) provider = "anthropic";
-                    else if (val.startsWith("llama") || val.startsWith("mixtral") || val.startsWith("gemma")) provider = "groq";
+                    else if (val.startsWith("llama") || val.startsWith("mixtral") || val.startsWith("gemma") || val.startsWith("grok")) provider = "groq";
                     else if (val.includes("/")) provider = "together";
                     setForm((current) => ({ ...current, model: val, provider }));
                   }}
@@ -1541,22 +1541,25 @@ export default function AgentFormPage() {
                 >
                   <option value="">System Default (auto)</option>
                   <optgroup label="OpenAI">
-                    <option value="gpt-4o-mini">GPT-4o Mini</option>
-                    <option value="gpt-4o">GPT-4o</option>
-                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                    <option value="gpt-4.1">GPT-4.1</option>
+                    <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                    <option value="gpt-5.4">GPT-5.4</option>
+                    <option value="gpt-5.4-nano">GPT-5.4 Nano</option>
+                    <option value="o4-preview">O4 Preview</option>
                   </optgroup>
                   <optgroup label="Anthropic">
-                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                    <option value="claude-4.6-sonnet-20260215">Claude Sonnet 4.6</option>
+                    <option value="claude-4.6-opus-20260301">Claude Opus 4.6</option>
+                    <option value="claude-4.5-haiku-20251101">Claude 4.5 Haiku</option>
                   </optgroup>
                   <optgroup label="Groq (Fast Inference)">
-                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-                    <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                    <option value="grok-4.20">Grok 4.20</option>
+                    <option value="grok-4.1-fast">Grok 4.1 Fast</option>
+                    <option value="grok-code">Grok Code</option>
                   </optgroup>
                   <optgroup label="Together AI">
-                    <option value="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo">Llama 3.1 70B</option>
-                    <option value="mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral 8x7B</option>
+                    <option value="meta-llama/Llama-4-Scout">Llama 4 Scout</option>
+                    <option value="meta-llama/Llama-4-Maverick">Llama 4 Maverick</option>
+                    <option value="deepseek-ai/DeepSeek-V4">DeepSeek V4</option>
                   </optgroup>
                 </select>
                 {form.model && (

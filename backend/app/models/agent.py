@@ -14,7 +14,7 @@ class AgentCreate(BaseModel):
     maxSteps: int = Field(default=10, ge=1, le=50)
     active: bool = Field(default=True)
     # Multi-model support
-    model: Optional[str] = Field(default=None, description="LLM model override (e.g. gpt-4o, claude-sonnet-4-20250514)")
+    model: Optional[str] = Field(default=None, description="LLM model override (e.g. gpt-5.4-mini, claude-4.6-sonnet-20260215)")
     provider: Optional[str] = Field(default=None, description="LLM provider override (openai, anthropic, groq, together)")
 
 
