@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { api, getExecutionWebSocketUrl } from "@/lib/api";
 import type { TaskDetail, ExecutionStep } from "@/lib/api";
+import { parseWsMessage } from "@/lib/ws-types";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -89,25 +90,27 @@ export default function TaskDetailPage() {
       wsRef.current = ws;
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "step") {
+        const msg = parseWsMessage(event);
+        if (!msg) return;
+
+        if (msg.type === "step") {
           setSteps((prev) => [
             ...prev,
             {
               id: Date.now().toString(),
               executionId: task.execution!.id,
               taskId: taskId,
-              agentId: "",
-              stepType: data.stepType,
-              content: data.content,
-              meta: data.meta || {},
+              agentId: msg.agentId,
+              stepType: msg.stepType,
+              content: msg.content,
+              meta: {},
               createdAt: new Date().toISOString(),
             },
           ]);
         }
         if (
-          data.type === "execution_completed" ||
-          data.type === "execution_failed"
+          msg.type === "execution_completed" ||
+          msg.type === "execution_failed"
         ) {
           loadData();
         }

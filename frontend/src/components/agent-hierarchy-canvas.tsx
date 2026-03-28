@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Play, Square, Loader2, Save, Undo2, LayoutGrid, AlertTriangle, Plus, GitBranch, X, Bot, Info, Unlink } from "lucide-react";
 
 import { api, type Agent } from "@/lib/api";
+import { parseWsMessage } from "@/lib/ws-types";
 import { hasHierarchyCycle, sanitizeAllowedSubAgents } from "@/lib/agent-hierarchy";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -119,46 +120,45 @@ export function AgentHierarchyCanvas() {
           ws.onopen = () => addLog("Connected to live feed", "info");
 
           ws.onmessage = (event) => {
-            try {
-              const msg = JSON.parse(event.data);
-              switch (msg.type) {
-                case "step":
-                  if (msg.agentId) setNodeExecState(msg.agentId, "running");
-                  addLog(`[${msg.agentName || "Agent"}] ${msg.content || "Thinking..."}`, "step");
-                  break;
-                case "delegation":
-                  if (msg.fromAgentId) setNodeExecState(msg.fromAgentId, "waiting");
-                  if (msg.toAgentId) setNodeExecState(msg.toAgentId, "running");
-                  // Animate edge between from → to
-                  setEdges((eds) => eds.map((e) =>
-                    e.source === msg.fromAgentId && e.target === msg.toAgentId
-                      ? { ...e, animated: true, style: { stroke: "#7bd0ff", strokeWidth: 3 } }
-                      : e
-                  ));
-                  addLog(`[${msg.fromAgent}] → Delegated to ${msg.toAgent}: "${msg.subtaskTitle}"`, "delegation");
-                  break;
-                case "execution_completed":
-                  if (msg.agentId) setNodeExecState(msg.agentId, "done", msg.result?.slice(0, 200));
-                  addLog(`[${msg.agentName || "Agent"}] ✓ Completed`, "done");
-                  setIsExecuting(false);
-                  break;
-                case "execution_failed":
-                  addLog(`✗ Execution failed: ${msg.error}`, "error");
-                  setIsExecuting(false);
-                  break;
-                case "tool_call":
-                  if (msg.agentId) setNodeExecState(msg.agentId, "running");
-                  addLog(`[${msg.agentName}] 🔧 ${msg.tool}(${Object.values(msg.args || {}).map((v: unknown) => String(v).slice(0, 30)).join(", ")})`, "step");
-                  break;
-                case "tool_result":
-                  addLog(`[${msg.agentName}] ← ${msg.tool}: ${(msg.content || "").slice(0, 100)}`, "done");
-                  break;
-                case "waiting_approval":
-                  if (msg.agentId) setNodeExecState(msg.agentId, "waiting");
-                  addLog(`[${msg.agentName}] Waiting for approval`, "waiting");
-                  break;
-              }
-            } catch {}
+            const msg = parseWsMessage(event);
+            if (!msg) return;
+
+            switch (msg.type) {
+              case "step":
+                setNodeExecState(msg.agentId, "running");
+                addLog(`[${msg.agentName}] ${msg.content || "Thinking..."}`, "step");
+                break;
+              case "delegation":
+                setNodeExecState(msg.fromAgentId, "waiting");
+                setNodeExecState(msg.toAgentId, "running");
+                setEdges((eds) => eds.map((e) =>
+                  e.source === msg.fromAgentId && e.target === msg.toAgentId
+                    ? { ...e, animated: true, style: { stroke: "#7bd0ff", strokeWidth: 3 } }
+                    : e
+                ));
+                addLog(`[${msg.fromAgent}] → Delegated to ${msg.toAgent}: "${msg.subtaskTitle}"`, "delegation");
+                break;
+              case "execution_completed":
+                setNodeExecState(msg.agentId, "done", msg.result.slice(0, 200));
+                addLog(`[${msg.agentName}] ✓ Completed`, "done");
+                setIsExecuting(false);
+                break;
+              case "execution_failed":
+                addLog(`✗ Execution failed: ${msg.error}`, "error");
+                setIsExecuting(false);
+                break;
+              case "tool_call":
+                setNodeExecState(msg.agentId, "running");
+                addLog(`[${msg.agentName}] 🔧 ${msg.tool}(${Object.values(msg.args).map((v: unknown) => String(v).slice(0, 30)).join(", ")})`, "step");
+                break;
+              case "tool_result":
+                addLog(`[${msg.agentName}] ← ${msg.tool}: ${msg.content.slice(0, 100)}`, "done");
+                break;
+              case "waiting_approval":
+                setNodeExecState(msg.agentId, "waiting");
+                addLog(`[${msg.agentName}] Waiting for approval`, "waiting");
+                break;
+            }
           };
 
           ws.onclose = () => {
