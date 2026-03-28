@@ -199,11 +199,27 @@ function parseAPIError(
   };
 }
 
-async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+/**
+ * Low-level fetch wrapper that centralises:
+ *  1. Auth header injection (Bearer token)
+ *  2. 401 → logout + redirect
+ *  3. Error body parsing → throw APIError
+ *
+ * Every network call in `api.*` MUST go through this.
+ */
+async function fetchBase(
+  path: string,
+  options?: RequestInit
+): Promise<Response> {
+  const headers: Record<string, string> = {};
 
+  // Auto-set JSON content-type unless the body is FormData
+  const isFormData = options?.body instanceof FormData;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // Inject auth token
   if (typeof window !== "undefined") {
     const token = getAuthToken();
     if (token) {
@@ -211,18 +227,14 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
     }
   }
 
-  const isFormData = options?.body instanceof FormData;
-  if (isFormData) {
-    delete headers["Content-Type"];
-  }
-
   const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
     headers: { ...headers, ...(options?.headers || {}) },
     credentials: "include",
-    ...options,
   });
 
   if (!res.ok) {
+    // Handle 401 globally
     if (res.status === 401 && typeof window !== "undefined") {
       removeAuthToken();
       if (
@@ -242,47 +254,21 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
     });
   }
 
+  return res;
+}
+
+/** Fetch JSON from the API. */
+async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetchBase(path, options);
   return res.json();
 }
 
+/** Fetch a binary file (e.g. CSV export) from the API. */
 async function fetchFile(
   path: string,
   options?: RequestInit
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const headers: Record<string, string> = {};
-
-  if (typeof window !== "undefined") {
-    const token = getAuthToken();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { ...headers, ...(options?.headers || {}) },
-    credentials: "include",
-    ...options,
-  });
-
-  if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined") {
-      removeAuthToken();
-      if (
-        !window.location.pathname.includes("/login") &&
-        !window.location.pathname.includes("/register")
-      ) {
-        window.location.href = "/login";
-      }
-    }
-
-    const errorPayload = await res.json().catch(() => null);
-    const error = parseAPIError(errorPayload, res.statusText || "API Error");
-    throw new APIError(error.message || "API Error", {
-      code: error.code,
-      status: res.status,
-      detail: error.detail,
-    });
-  }
+  const res = await fetchBase(path, options);
 
   const contentDisposition = res.headers.get("content-disposition") || "";
   const filenameMatch = contentDisposition.match(/filename="([^"]+)"/i);
@@ -385,23 +371,13 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    uploadAvatar: async (file: File): Promise<UserProfile> => {
-      const token = getAuthToken();
+    uploadAvatar: (file: File): Promise<UserProfile> => {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch(`${API_BASE}/auth/me/avatar`, {
+      return fetchAPI<UserProfile>("/auth/me/avatar", {
         method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
         body: formData,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Upload failed");
-      }
-      return res.json();
     },
     deleteAvatar: () =>
       fetchAPI<UserProfile>("/auth/me/avatar", {
@@ -579,24 +555,16 @@ export const api = {
   knowledge: {
     list: () => fetchAPI<KnowledgeDoc[]>("/knowledge"),
     get: (id: string) => fetchAPI<KnowledgeDoc & { textPreview: string }>(`/knowledge/${id}`),
-    upload: async (file: File, name?: string, description?: string, tags?: string): Promise<KnowledgeDoc> => {
-      const token = getAuthToken();
+    upload: (file: File, name?: string, description?: string, tags?: string): Promise<KnowledgeDoc> => {
       const formData = new FormData();
       formData.append("file", file);
       if (name) formData.append("name", name);
       if (description) formData.append("description", description);
       if (tags) formData.append("tags", tags);
-      const res = await fetch(`${API_BASE}/knowledge/upload`, {
+      return fetchAPI<KnowledgeDoc>("/knowledge/upload", {
         method: "POST",
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: "include",
         body: formData,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Upload failed");
-      }
-      return res.json();
     },
     delete: (id: string) => fetchAPI<{ message: string }>(`/knowledge/${id}`, { method: "DELETE" }),
     search: (q: string) => fetchAPI<{ id: string; name: string; snippet: string }[]>(`/knowledge/search/query?q=${encodeURIComponent(q)}`),
