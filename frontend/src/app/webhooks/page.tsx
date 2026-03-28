@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Fuse from "fuse.js";
 import {
   History,
   Bot,
@@ -19,6 +20,7 @@ import {
   Search,
   Trash2,
   Webhook as WebhookIcon,
+  X,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
@@ -523,6 +525,7 @@ export default function WebhooksPage() {
   const [pageError, setPageError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null);
   const [saving, setSaving] = useState(false);
@@ -624,6 +627,13 @@ export default function WebhooksPage() {
   }, [fetchData]);
 
   useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  useEffect(() => {
     const storageKey = getWebhookChangedPreviewRulesStorageKey();
     const persistedRules = loadWebhookChangedPreviewRules(storageKey);
 
@@ -671,21 +681,19 @@ export default function WebhooksPage() {
     return () => window.clearTimeout(timeout);
   }, [pageNotice]);
 
-  const filteredWebhooks = useMemo(
-    () =>
-      webhooks.filter((webhook) => {
-        const haystack = [
-          webhook.name,
-          webhook.description,
-          webhook.agentName || "",
-          webhook.taskTitle,
-        ]
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(search.toLowerCase());
-      }),
-    [search, webhooks]
-  );
+  const filteredWebhooks = useMemo(() => {
+    const query = debouncedSearch.trim();
+    if (!query) return webhooks;
+
+    const fuse = new Fuse(webhooks, {
+      keys: ["name", "description", "agentName", "taskTitle"],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeMatches: false,
+    });
+
+    return fuse.search(query).map((result) => result.item);
+  }, [webhooks, debouncedSearch]);
 
   const previewPayloadLines = useMemo(
     () =>
@@ -1755,9 +1763,33 @@ export default function WebhooksPage() {
             placeholder="Search webhooks..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="border-0 bg-surface-container pl-10 text-foreground placeholder:text-on-surface-dim"
+            className="border-0 bg-surface-container pl-10 pr-10 text-foreground placeholder:text-on-surface-dim"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-on-surface-dim transition-colors hover:bg-white/10 hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
+      </div>
+
+      <div className="mb-4 flex items-center justify-between px-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-dim opacity-70">
+          {search ? (
+            <>
+              Found <span className="text-accent-cyan font-extrabold">{filteredWebhooks.length}</span> match{filteredWebhooks.length === 1 ? "" : "es"} for &quot;{search}&quot;
+            </>
+          ) : (
+            <>
+              Total <span className="text-accent-cyan font-extrabold">{webhooks.length}</span> webhooks
+            </>
+          )}
+        </p>
       </div>
 
       <div

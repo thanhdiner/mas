@@ -3,9 +3,8 @@ Route: /api/schedules — CRUD for scheduled triggers.
 """
 
 from fastapi import APIRouter, HTTPException
-from bson import ObjectId
 
-from app.models.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
+from app.models.schedule import ScheduleCreate, ScheduleUpdate
 from app.services.scheduler import (
     create_schedule,
     update_schedule,

@@ -79,12 +79,12 @@ export default function PlaygroundPage() {
       };
       setMessages([...newMessages, assistantMsg]);
       setTotalTokens((prev) => prev + (res.usage?.total_tokens || 0));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages([
         ...newMessages,
         {
           role: "assistant",
-          content: `⚠️ Error: ${err?.message || "Failed to get response"}`,
+          content: `⚠️ Error: ${err instanceof Error ? err.message : "Failed to get response"}`,
         },
       ]);
     }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserPlus, Loader2, Bot, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
+import { setAuthToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,10 +29,10 @@ export default function RegisterPage() {
       await api.auth.register({ email, password, full_name: fullName });
       // Auto login
       const data = await api.auth.login(email, password);
-      localStorage.setItem("mas_token", data.access_token);
+      setAuthToken(data.access_token);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to register. Please try again.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to register. Please try again.");
     } finally {
       setLoading(false);
     }

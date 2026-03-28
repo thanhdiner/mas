@@ -130,8 +130,8 @@ export default function TaskDetailPage() {
     try {
       await api.tasks.execute(taskId);
       await loadData();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setExecuting(false);
     }
@@ -141,8 +141,8 @@ export default function TaskDetailPage() {
     try {
       await api.tasks.cancel(taskId);
       await loadData();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   };
 

@@ -9,13 +9,11 @@ Tests:
   5. Multi-model provider selection
 """
 
-import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.models.task import TaskStatus, TaskCreate
-from app.models.execution import ExecutionStatus, StepType
+from app.models.task import TaskStatus
+from app.models.execution import ExecutionStatus
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────

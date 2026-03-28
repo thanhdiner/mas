@@ -57,7 +57,7 @@ export default function KnowledgePage() {
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<(KnowledgeDoc & { textPreview?: string }) | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<{ id: string; name: string; snippet: string }[]>([]);
   const [searching, setSearching] = useState(false);
 
   // Upload form
@@ -92,8 +92,8 @@ export default function KnowledgePage() {
       setUploadDesc("");
       setUploadTags("");
       fetchDocs();
-    } catch (err: any) {
-      alert(err.message || "Upload failed");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Upload failed");
     }
     setUploading(false);
   };

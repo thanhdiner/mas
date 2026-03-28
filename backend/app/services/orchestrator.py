@@ -14,7 +14,6 @@ Uses the unified LLM Provider for multi-model support.
 """
 
 import json
-import asyncio
 from typing import Optional
 
 from app.config import get_settings
@@ -378,7 +377,7 @@ class Orchestrator:
 
         target_agent = await AgentService.get_agent(target_agent_id)
         if not target_agent or not target_agent.active:
-            msg = f"Target agent not found or inactive."
+            msg = "Target agent not found or inactive."
             await ExecutionService.add_step(
                 execution.id, task.id, agent.id,
                 StepType.ERROR, msg,

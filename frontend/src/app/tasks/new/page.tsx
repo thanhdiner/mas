@@ -41,8 +41,8 @@ export default function CreateTaskPage() {
       // Auto-execute
       await api.tasks.execute(task.id);
       router.push(`/tasks/${task.id}`);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }

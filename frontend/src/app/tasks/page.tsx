@@ -10,8 +10,8 @@ import {
   Filter,
   ArrowRight,
 } from "lucide-react";
-import { api } from "@/lib/api";
-import type { Task, TaskStatus } from "@/lib/api";
+import type { TaskStatus } from "@/lib/api";
+import { useTasks } from "@/lib/hooks/use-tasks";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -29,20 +29,10 @@ const statusFilters: { label: string; value: TaskStatus | "all" }[] = [
 function TasksContent() {
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") || "all";
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(initialStatus);
-
-  useEffect(() => {
-    const params: Record<string, string | boolean> = { parent_only: true };
-    if (filter !== "all") params.status = filter;
-
-    api.tasks
-      .list(params as any)
-      .then(setTasks)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [filter]);
+  const { tasks, isLoading: loading } = useTasks(
+    filter !== "all" ? { parent_only: true, status: filter } : { parent_only: true }
+  );
 
   return (
     <>
@@ -55,10 +45,7 @@ function TasksContent() {
         {statusFilters.map((sf) => (
           <button
             key={sf.value}
-            onClick={() => {
-              setFilter(sf.value);
-              setLoading(true);
-            }}
+            onClick={() => setFilter(sf.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
               filter === sf.value
                 ? "text-[#060e20]"

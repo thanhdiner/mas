@@ -81,10 +81,10 @@ export default function ProfilePage() {
       });
       setUser(updated);
       setProfileMsg({ type: "success", text: "Profile updated successfully" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setProfileMsg({
         type: "error",
-        text: err.message || "Failed to update profile",
+        text: err instanceof Error ? err.message : "Failed to update profile",
       });
     } finally {
       setSavingProfile(false);
@@ -120,10 +120,10 @@ export default function ProfilePage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPasswordMsg({
         type: "error",
-        text: err.message || "Failed to change password",
+        text: err instanceof Error ? err.message : "Failed to change password",
       });
     } finally {
       setSavingPassword(false);
@@ -171,8 +171,8 @@ export default function ProfilePage() {
       const updated = await api.auth.uploadAvatar(file);
       setUser(updated);
       setProfileMsg({ type: "success", text: "Avatar updated successfully" });
-    } catch (err: any) {
-      setProfileMsg({ type: "error", text: err.message || "Failed to upload avatar" });
+    } catch (err: unknown) {
+      setProfileMsg({ type: "error", text: err instanceof Error ? err.message : "Failed to upload avatar" });
       setOptimisticAvatar(null); // Revert on failure
     } finally {
       setUploadingAvatar(false);
@@ -192,8 +192,8 @@ export default function ProfilePage() {
       const updated = await api.auth.deleteAvatar();
       setUser(updated);
       setProfileMsg({ type: "success", text: "Avatar removed successfully" });
-    } catch (err: any) {
-      setProfileMsg({ type: "error", text: err.message || "Failed to remove avatar" });
+    } catch (err: unknown) {
+      setProfileMsg({ type: "error", text: err instanceof Error ? err.message : "Failed to remove avatar" });
     } finally {
       setDeletingAvatar(false);
     }

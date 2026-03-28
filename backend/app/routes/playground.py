@@ -12,7 +12,6 @@ from app.config import get_settings
 from app.services.agent_service import AgentService
 from app.services.llm_provider import get_llm_provider, AVAILABLE_MODELS
 from app.tools.registry import tool_registry
-from app.database import get_db
 
 router = APIRouter(prefix="/playground", tags=["Playground"])
 settings = get_settings()

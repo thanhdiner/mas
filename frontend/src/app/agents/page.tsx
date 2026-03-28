@@ -1,32 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import Fuse from "fuse.js";
 import Link from "next/link";
-import { Bot, GitBranch, Plus, Power, PowerOff, Search } from "lucide-react";
-import { api } from "@/lib/api";
-import type { Agent } from "@/lib/api";
+import { Bot, GitBranch, Plus, Power, PowerOff, Search, X } from "lucide-react";
+import { useAgents } from "@/lib/hooks/use-agents";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function AgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { agents, isLoading: loading } = useAgents();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    api.agents
-      .list()
-      .then(setAgents)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  const filtered = agents.filter(
-    (a) =>
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.role.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const query = debouncedSearch.trim();
+    if (!query) return agents;
+
+    const fuse = new Fuse(agents, {
+      keys: ["name", "role", "description"],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeMatches: false,
+    });
+
+    return fuse.search(query).map((result) => result.item);
+  }, [agents, debouncedSearch]);
 
   return (
     <>
@@ -65,9 +72,34 @@ export default function AgentsPage() {
             placeholder="Search agents..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 bg-surface-container border-0 text-foreground placeholder:text-on-surface-dim"
+            className="pl-10 pr-10 bg-surface-container border-0 text-foreground placeholder:text-on-surface-dim"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 transition-colors hover:bg-white/10 hover:text-foreground"
+              style={{ color: "var(--on-surface-dim)" }}
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
+      </div>
+      
+      <div className="mb-4 flex items-center justify-between px-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest opacity-70" style={{ color: "var(--on-surface-dim)" }}>
+          {search ? (
+            <>
+              Found <span className="font-extrabold text-accent-cyan">{filtered.length}</span> match{filtered.length === 1 ? "" : "es"} for &quot;{search}&quot;
+            </>
+          ) : (
+            <>
+              Total <span className="font-extrabold text-accent-cyan">{agents.length}</span> agents
+            </>
+          )}
+        </p>
       </div>
 
       {/* Agents Grid */}
@@ -98,13 +130,21 @@ export default function AgentsPage() {
               ? "Try a different search term"
               : "Create your first agent to get started"}
           </p>
-          {!search && (
+          {!search ? (
             <Link href="/agents/new">
               <Button className="gradient-primary text-[#060e20] font-medium border-0">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Agent
               </Button>
             </Link>
+          ) : (
+            <Button
+              variant="secondary"
+              onClick={() => setSearch("")}
+              className="border-0 bg-surface-base text-foreground mt-4"
+            >
+              Clear Search
+            </Button>
           )}
         </div>
       ) : (

@@ -1,6 +1,8 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "";
 
+import { getAuthToken, removeAuthToken } from "@/lib/auth";
+
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
@@ -65,6 +67,7 @@ export interface Task {
   error?: string;
   createdAt: string;
   updatedAt?: string;
+  agentName?: string;
 }
 
 export interface TaskDetail extends Task {
@@ -115,7 +118,7 @@ export interface DashboardStats {
 export interface ActivityItem {
   id: string;
   title: string;
-  status: string;
+  status: TaskStatus;
   agentName?: string;
   createdAt: string;
 }
@@ -202,7 +205,7 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   };
 
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("mas_token");
+    const token = getAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -215,12 +218,13 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
 
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { ...headers, ...(options?.headers || {}) },
+    credentials: "include",
     ...options,
   });
 
   if (!res.ok) {
     if (res.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("mas_token");
+      removeAuthToken();
       if (
         !window.location.pathname.includes("/login") &&
         !window.location.pathname.includes("/register")
@@ -248,7 +252,7 @@ async function fetchFile(
   const headers: Record<string, string> = {};
 
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("mas_token");
+    const token = getAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -256,12 +260,13 @@ async function fetchFile(
 
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { ...headers, ...(options?.headers || {}) },
+    credentials: "include",
     ...options,
   });
 
   if (!res.ok) {
     if (res.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("mas_token");
+      removeAuthToken();
       if (
         !window.location.pathname.includes("/login") &&
         !window.location.pathname.includes("/register")
@@ -381,7 +386,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
     uploadAvatar: async (file: File): Promise<UserProfile> => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("mas_token") : null;
+      const token = getAuthToken();
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch(`${API_BASE}/auth/me/avatar`, {
@@ -389,6 +394,7 @@ export const api = {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        credentials: "include",
         body: formData,
       });
       if (!res.ok) {
@@ -401,9 +407,18 @@ export const api = {
       fetchAPI<UserProfile>("/auth/me/avatar", {
         method: "DELETE",
       }),
-    logout: () => {
+    logout: async () => {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("mas_token");
+        // Call backend to clear HttpOnly cookie
+        try {
+          await fetch(`${API_BASE}/auth/logout`, {
+            method: "POST",
+            credentials: "include",
+          });
+        } catch {
+          // Best-effort: even if backend is down, clear client-side tokens
+        }
+        removeAuthToken();
         window.location.href = "/login";
       }
     },
@@ -565,7 +580,7 @@ export const api = {
     list: () => fetchAPI<KnowledgeDoc[]>("/knowledge"),
     get: (id: string) => fetchAPI<KnowledgeDoc & { textPreview: string }>(`/knowledge/${id}`),
     upload: async (file: File, name?: string, description?: string, tags?: string): Promise<KnowledgeDoc> => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("mas_token") : null;
+      const token = getAuthToken();
       const formData = new FormData();
       formData.append("file", file);
       if (name) formData.append("name", name);
@@ -574,6 +589,7 @@ export const api = {
       const res = await fetch(`${API_BASE}/knowledge/upload`, {
         method: "POST",
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: "include",
         body: formData,
       });
       if (!res.ok) {

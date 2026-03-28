@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -98,7 +100,7 @@ function sanitizePresetValues(
   return nextValues;
 }
 
-export default function ToolsPage() {
+function ToolsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -1374,5 +1376,22 @@ export default function ToolsPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export default function ToolsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="flex items-center justify-center py-20 text-sm"
+          style={{ color: "var(--on-surface-dim)" }}
+        >
+          Loading tools...
+        </div>
+      }
+    >
+      <ToolsPageContent />
+    </Suspense>
   );
 }

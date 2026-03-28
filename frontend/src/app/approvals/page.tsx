@@ -10,7 +10,7 @@ import {
   Eye,
   AlertTriangle,
 } from "lucide-react";
-import { api, Task } from "@/lib/api";
+import { api, Task, TaskDetail } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,7 @@ export default function ApprovalsPage() {
   const [pending, setPending] = useState<Task[]>([]);
   const [history, setHistory] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
   const [tab, setTab] = useState<"pending" | "history">("pending");
 
@@ -168,7 +168,7 @@ export default function ApprovalsPage() {
                       <div className="flex items-center gap-2 mt-0.5">
                         <Bot className="w-3 h-3" style={{ color: "var(--on-surface-dim)" }} />
                         <span className="text-xs" style={{ color: "var(--on-surface-dim)" }}>
-                          {(task as any).agentName || "Agent"}
+                          {task.agentName || "Agent"}
                         </span>
                         <span className="text-[10px]" style={{ color: "var(--on-surface-dim)" }}>
                           {new Date(task.createdAt).toLocaleString()}

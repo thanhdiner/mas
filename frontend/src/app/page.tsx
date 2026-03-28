@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Bot,
@@ -26,47 +26,28 @@ import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 
-export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [topAgents, setTopAgents] = useState<TopAgent[]>([]);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+import {
+  useDashboardStats,
+  useDashboardActivity,
+  useDashboardTopAgents,
+  useDashboardAnalytics,
+  useDashboardPendingTasks,
+} from "@/lib/hooks/use-dashboard";
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [s, a, t, an, pending] = await Promise.all([
-          api.dashboard.stats(),
-          api.dashboard.activity(15),
-          api.dashboard.topAgents(5),
-          api.dashboard.analytics().catch(() => null),
-          api.tasks.list({ status: "waiting_approval" }).catch(() => []),
-        ]);
-        setStats(s);
-        setActivity(a);
-        setTopAgents(t);
-        setAnalytics(an);
-        setPendingTasks(pending.slice(0, 3));
-      } catch {
-        // API not available
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-    const interval = setInterval(load, 10000);
-    return () => clearInterval(interval);
-  }, []);
+export default function DashboardPage() {
+  const { stats, mutate: mutateStats } = useDashboardStats();
+  const { activity, isLoading: activityLoading } = useDashboardActivity(15);
+  const { topAgents, isLoading: agentsLoading } = useDashboardTopAgents(5);
+  const { analytics } = useDashboardAnalytics();
+  const { pendingTasks, mutate: mutatePending } = useDashboardPendingTasks(3);
+
+  const loading = activityLoading || agentsLoading;
 
   const handleApprove = async (taskId: string) => {
     try {
       await api.tasks.approve(taskId);
-      setPendingTasks((prev) => prev.filter((t) => t.id !== taskId));
-      setStats((prev) =>
-        prev ? { ...prev, waitingApprovals: Math.max(0, prev.waitingApprovals - 1) } : prev
-      );
+      mutatePending();
+      mutateStats();
     } catch {
       alert("Failed to approve task.");
     }
@@ -75,10 +56,8 @@ export default function DashboardPage() {
   const handleReject = async (taskId: string) => {
     try {
       await api.tasks.reject(taskId);
-      setPendingTasks((prev) => prev.filter((t) => t.id !== taskId));
-      setStats((prev) =>
-        prev ? { ...prev, waitingApprovals: Math.max(0, prev.waitingApprovals - 1) } : prev
-      );
+      mutatePending();
+      mutateStats();
     } catch {
       alert("Failed to reject task.");
     }
@@ -271,7 +250,7 @@ export default function DashboardPage() {
                         <span className="text-[11px]" style={{ color: "var(--on-surface-dim)" }}>{new Date(item.createdAt).toLocaleTimeString()}</span>
                       </div>
                     </div>
-                    <StatusBadge status={item.status as any} />
+                    <StatusBadge status={item.status} />
                   </Link>
                 ))}
               </div>

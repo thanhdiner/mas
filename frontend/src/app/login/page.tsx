@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LogIn, Loader2, Bot, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
+import { setAuthToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,10 +25,10 @@ export default function LoginPage() {
 
     try {
       const data = await api.auth.login(email, password);
-      localStorage.setItem("mas_token", data.access_token);
+      setAuthToken(data.access_token);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to login. Please try again.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to login. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -104,7 +105,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center text-sm" style={{ color: "var(--on-surface-dim)" }}>
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/register" className="text-accent-cyan hover:underline transition-colors">
             Create account
           </Link>

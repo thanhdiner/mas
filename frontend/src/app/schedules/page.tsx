@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import Fuse from "fuse.js";
 import {
   Clock,
   Plus,
@@ -13,6 +14,7 @@ import {
   Pause,
   Search,
   Edit2,
+  X,
 } from "lucide-react";
 import { api, Schedule, ScheduleCreate, Agent } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
@@ -76,6 +78,7 @@ export default function SchedulesPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
 
@@ -102,6 +105,13 @@ export default function SchedulesPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const resetForm = () => {
     setFormName(""); setFormAgentId(""); setFormPrompt(""); setFormType("cron");
@@ -174,11 +184,19 @@ export default function SchedulesPage() {
     }
   };
 
-  const filtered = schedules.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.agentName || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const query = debouncedSearch.trim();
+    if (!query) return schedules;
+
+    const fuse = new Fuse(schedules, {
+      keys: ["name", "agentName", "promptPayload", "scheduleType"],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeMatches: false,
+    });
+
+    return fuse.search(query).map((result) => result.item);
+  }, [schedules, debouncedSearch]);
 
   return (
     <>
@@ -197,8 +215,19 @@ export default function SchedulesPage() {
             placeholder="Search schedules..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 bg-surface-container border-0 text-foreground placeholder:text-on-surface-dim"
+            className="pl-10 pr-10 bg-surface-container border-0 text-foreground placeholder:text-on-surface-dim"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 transition-colors hover:bg-white/10 hover:text-foreground"
+              style={{ color: "var(--on-surface-dim)" }}
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <Button
           onClick={openCreate}
@@ -206,6 +235,20 @@ export default function SchedulesPage() {
         >
           <Plus className="w-4 h-4 mr-2" /> New Schedule
         </Button>
+      </div>
+
+      <div className="mb-4 flex items-center justify-between px-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest opacity-70" style={{ color: "var(--on-surface-dim)" }}>
+          {search ? (
+            <>
+              Found <span className="font-extrabold text-accent-cyan">{filtered.length}</span> match{filtered.length === 1 ? "" : "es"} for &quot;{search}&quot;
+            </>
+          ) : (
+            <>
+              Total <span className="font-extrabold text-accent-cyan">{schedules.length}</span> schedules
+            </>
+          )}
+        </p>
       </div>
 
       {loading ? (
@@ -219,12 +262,22 @@ export default function SchedulesPage() {
           <p className="text-sm mb-6" style={{ color: "var(--on-surface-dim)" }}>
             Create a schedule to automate agent execution
           </p>
-          <Button
-            onClick={openCreate}
-            className="gradient-primary text-[#060e20] font-semibold"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Create First Schedule
-          </Button>
+          {search ? (
+            <Button
+              variant="secondary"
+              onClick={() => setSearch("")}
+              className="border-0 bg-surface-base text-foreground mt-2"
+            >
+              Clear Search
+            </Button>
+          ) : (
+            <Button
+              onClick={openCreate}
+              className="gradient-primary text-[#060e20] font-semibold"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Create First Schedule
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -391,7 +444,7 @@ export default function SchedulesPage() {
                   return (
                     <button
                       key={opt.value}
-                      onClick={() => setFormType(opt.value as any)}
+                      onClick={() => setFormType(opt.value as "cron" | "interval" | "once")}
                       className="p-3 rounded-lg text-center transition-all duration-200 border"
                       style={{
                         background: selected ? "rgba(123,208,255,0.1)" : "var(--surface-container)",

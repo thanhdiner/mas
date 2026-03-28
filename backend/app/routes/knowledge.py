@@ -8,8 +8,6 @@ import os
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel
-from typing import Optional
 
 from app.database import get_db
 from app.config import get_settings

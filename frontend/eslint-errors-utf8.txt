@@ -1,0 +1,94 @@
+﻿F:\All Project\mas\frontend\src\app\agents\[id]\page.tsx
+  Line 419: Unexpected any. Specify a different type.
+  Line 420: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\approvals\page.tsx
+  Line 27: Unexpected any. Specify a different type.
+  Line 171: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\knowledge\page.tsx
+  Line 60: Unexpected any. Specify a different type.
+  Line 95: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\login\page.tsx
+  Line 29: Unexpected any. Specify a different type.
+  Line 107: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.
+F:\All Project\mas\frontend\src\app\page.tsx
+  Line 274: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\playground\page.tsx
+  Line 82: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\profile\page.tsx
+  Line 84: Unexpected any. Specify a different type.
+  Line 123: Unexpected any. Specify a different type.
+  Line 174: Unexpected any. Specify a different type.
+  Line 195: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\register\page.tsx
+  Line 33: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\schedules\page.tsx
+  Line 447: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\tasks\[id]\page.tsx
+  Line 133: Unexpected any. Specify a different type.
+  Line 144: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\tasks\new\page.tsx
+  Line 44: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\app\tasks\page.tsx
+  Line 41: Unexpected any. Specify a different type.
+F:\All Project\mas\frontend\src\components\agent-hierarchy-canvas.tsx
+  Line 367: Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+F:\All Project\mas\frontend\src\components\agent-hierarchy-canvas.tsx:367:10
+  365 |
+  366 |       <div className="flex items-center justify-center shrink-0 rounded-l-lg" style={{ background: color.bg, width: 52 }}>
+> 367 |         <Icon className="w-5 h-5" style={{ color: color.icon }} strokeWidth={2} />
+      |          ^^^^ This component is created during render
+  368 |       </div>
+  369 |
+  370 |       <div className="flex-1 flex flex-col justify-center px-3 min-w-0 rounded-r-lg" style={{ background: "#2a2e3a" }}>
+
+F:\All Project\mas\frontend\src\components\agent-hierarchy-canvas.tsx:312:16
+  310 |   const { agent, isSelected, childCount, colorIndex, execState, execOutput } = data;
+  311 |   const color = NODE_COLORS[colorIndex];
+> 312 |   const Icon = getRoleIcon(agent.role);
+      |                ^^^^^^^^^^^^^^^^^^^^^^^ The component is created during render here
+  313 |
+  314 |   const execRing = {
+  315 |     idle: "",
+  Line 411: Unexpected any. Specify a different type.
+  Line 426: Unexpected any. Specify a different type.
+  Line 448: Unexpected any. Specify a different type.
+  Line 581: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\All Project\mas\frontend\src\components\agent-hierarchy-canvas.tsx:581:5
+  579 |   // Sync form when agent changes
+  580 |   useEffect(() => {
+> 581 |     setForm({
+      |     ^^^^^^^ Avoid calling setState() directly within an effect
+  582 |       name: agent.name, role: agent.role, description: agent.description,
+  583 |       systemPrompt: agent.systemPrompt, maxSteps: agent.maxSteps, active: agent.active,
+  584 |     });
+  Line 621: Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+F:\All Project\mas\frontend\src\components\agent-hierarchy-canvas.tsx:621:14
+  619 |         <div className="flex items-center gap-3">
+  620 |           <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0" style={{ background: color.bg }}>
+> 621 |             <Icon className="h-4 w-4 text-white" />
+      |              ^^^^ This component is created during render
+  622 |           </div>
+  623 |           <div className="min-w-0 flex-1">
+  624 |             <p className="text-[13px] font-semibold truncate" style={{ color: "#e8eaed" }}>{agent.name}</p>
+
+F:\All Project\mas\frontend\src\components\agent-hierarchy-canvas.tsx:613:16
+  611 |
+  612 |   const color = NODE_COLORS[colorIndex];
+> 613 |   const Icon = getRoleIcon(agent.role);
+      |                ^^^^^^^^^^^^^^^^^^^^^^^ The component is created during render here
+  614 |
+  615 |   return (
+  616 |     <div className="flex flex-col flex-1 min-h-0">

@@ -1,0 +1,409 @@
+﻿app\models\__init__.py:1:30: F401 `app.models.agent.AgentCreate` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+  |                              ^^^^^^^^^^^ F401
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |
+  = help: Use an explicit re-export: `AgentCreate as AgentCreate`
+
+app\models\__init__.py:1:43: F401 `app.models.agent.AgentUpdate` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+  |                                           ^^^^^^^^^^^ F401
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |
+  = help: Use an explicit re-export: `AgentUpdate as AgentUpdate`
+
+app\models\__init__.py:1:56: F401 `app.models.agent.AgentResponse` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+  |                                                        ^^^^^^^^^^^^^ F401
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |
+  = help: Use an explicit re-export: `AgentResponse as AgentResponse`
+
+app\models\__init__.py:3:5: F401 `app.models.task.TaskCreate` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |     ^^^^^^^^^^ F401
+4 |     TaskStatus, SubtaskInfo
+5 | )
+  |
+  = help: Use an explicit re-export: `TaskCreate as TaskCreate`
+
+app\models\__init__.py:3:17: F401 `app.models.task.TaskUpdate` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |                 ^^^^^^^^^^ F401
+4 |     TaskStatus, SubtaskInfo
+5 | )
+  |
+  = help: Use an explicit re-export: `TaskUpdate as TaskUpdate`
+
+app\models\__init__.py:3:29: F401 `app.models.task.TaskResponse` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |                             ^^^^^^^^^^^^ F401
+4 |     TaskStatus, SubtaskInfo
+5 | )
+  |
+  = help: Use an explicit re-export: `TaskResponse as TaskResponse`
+
+app\models\__init__.py:3:43: F401 `app.models.task.TaskDetailResponse` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.models.agent import AgentCreate, AgentUpdate, AgentResponse
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+  |                                           ^^^^^^^^^^^^^^^^^^ F401
+4 |     TaskStatus, SubtaskInfo
+5 | )
+  |
+  = help: Use an explicit re-export: `TaskDetailResponse as TaskDetailResponse`
+
+app\models\__init__.py:4:5: F401 `app.models.task.TaskStatus` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+4 |     TaskStatus, SubtaskInfo
+  |     ^^^^^^^^^^ F401
+5 | )
+6 | from app.models.execution import (
+  |
+  = help: Use an explicit re-export: `TaskStatus as TaskStatus`
+
+app\models\__init__.py:4:17: F401 `app.models.task.SubtaskInfo` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+2 | from app.models.task import (
+3 |     TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse,
+4 |     TaskStatus, SubtaskInfo
+  |                 ^^^^^^^^^^^ F401
+5 | )
+6 | from app.models.execution import (
+  |
+  = help: Use an explicit re-export: `SubtaskInfo as SubtaskInfo`
+
+app\models\__init__.py:7:5: F401 `app.models.execution.ExecutionResponse` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+5 | )
+6 | from app.models.execution import (
+7 |     ExecutionResponse, ExecutionStepResponse,
+  |     ^^^^^^^^^^^^^^^^^ F401
+8 |     ExecutionStatus, StepType
+9 | )
+  |
+  = help: Use an explicit re-export: `ExecutionResponse as ExecutionResponse`
+
+app\models\__init__.py:7:24: F401 `app.models.execution.ExecutionStepResponse` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+5 | )
+6 | from app.models.execution import (
+7 |     ExecutionResponse, ExecutionStepResponse,
+  |                        ^^^^^^^^^^^^^^^^^^^^^ F401
+8 |     ExecutionStatus, StepType
+9 | )
+  |
+  = help: Use an explicit re-export: `ExecutionStepResponse as ExecutionStepResponse`
+
+app\models\__init__.py:8:5: F401 `app.models.execution.ExecutionStatus` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 6 | from app.models.execution import (
+ 7 |     ExecutionResponse, ExecutionStepResponse,
+ 8 |     ExecutionStatus, StepType
+   |     ^^^^^^^^^^^^^^^ F401
+ 9 | )
+10 | from app.models.approval import (
+   |
+   = help: Use an explicit re-export: `ExecutionStatus as ExecutionStatus`
+
+app\models\__init__.py:8:22: F401 `app.models.execution.StepType` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 6 | from app.models.execution import (
+ 7 |     ExecutionResponse, ExecutionStepResponse,
+ 8 |     ExecutionStatus, StepType
+   |                      ^^^^^^^^ F401
+ 9 | )
+10 | from app.models.approval import (
+   |
+   = help: Use an explicit re-export: `StepType as StepType`
+
+app\models\__init__.py:11:5: F401 `app.models.approval.ApprovalCreate` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 9 | )
+10 | from app.models.approval import (
+11 |     ApprovalCreate, ApprovalResponse, ApprovalAction, ApprovalStatus
+   |     ^^^^^^^^^^^^^^ F401
+12 | )
+   |
+   = help: Use an explicit re-export: `ApprovalCreate as ApprovalCreate`
+
+app\models\__init__.py:11:21: F401 `app.models.approval.ApprovalResponse` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 9 | )
+10 | from app.models.approval import (
+11 |     ApprovalCreate, ApprovalResponse, ApprovalAction, ApprovalStatus
+   |                     ^^^^^^^^^^^^^^^^ F401
+12 | )
+   |
+   = help: Use an explicit re-export: `ApprovalResponse as ApprovalResponse`
+
+app\models\__init__.py:11:39: F401 `app.models.approval.ApprovalAction` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 9 | )
+10 | from app.models.approval import (
+11 |     ApprovalCreate, ApprovalResponse, ApprovalAction, ApprovalStatus
+   |                                       ^^^^^^^^^^^^^^ F401
+12 | )
+   |
+   = help: Use an explicit re-export: `ApprovalAction as ApprovalAction`
+
+app\models\__init__.py:11:55: F401 `app.models.approval.ApprovalStatus` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 9 | )
+10 | from app.models.approval import (
+11 |     ApprovalCreate, ApprovalResponse, ApprovalAction, ApprovalStatus
+   |                                                       ^^^^^^^^^^^^^^ F401
+12 | )
+   |
+   = help: Use an explicit re-export: `ApprovalStatus as ApprovalStatus`
+
+app\routes\__init__.py:1:41: F401 `app.routes.agents.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.routes.agents import router as agents_router
+  |                                         ^^^^^^^^^^^^^ F401
+2 | from app.routes.tasks import router as tasks_router
+3 | from app.routes.executions import router as executions_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:2:40: F401 `app.routes.tasks.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.routes.agents import router as agents_router
+2 | from app.routes.tasks import router as tasks_router
+  |                                        ^^^^^^^^^^^^ F401
+3 | from app.routes.executions import router as executions_router
+4 | from app.routes.dashboard import router as dashboard_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:3:45: F401 `app.routes.executions.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.routes.agents import router as agents_router
+2 | from app.routes.tasks import router as tasks_router
+3 | from app.routes.executions import router as executions_router
+  |                                             ^^^^^^^^^^^^^^^^^ F401
+4 | from app.routes.dashboard import router as dashboard_router
+5 | from app.routes.ws import router as ws_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:4:44: F401 `app.routes.dashboard.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+2 | from app.routes.tasks import router as tasks_router
+3 | from app.routes.executions import router as executions_router
+4 | from app.routes.dashboard import router as dashboard_router
+  |                                            ^^^^^^^^^^^^^^^^ F401
+5 | from app.routes.ws import router as ws_router
+6 | from app.routes.auth import router as auth_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:5:37: F401 `app.routes.ws.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+3 | from app.routes.executions import router as executions_router
+4 | from app.routes.dashboard import router as dashboard_router
+5 | from app.routes.ws import router as ws_router
+  |                                     ^^^^^^^^^ F401
+6 | from app.routes.auth import router as auth_router
+7 | from app.routes.tools import router as tools_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:6:39: F401 `app.routes.auth.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+4 | from app.routes.dashboard import router as dashboard_router
+5 | from app.routes.ws import router as ws_router
+6 | from app.routes.auth import router as auth_router
+  |                                       ^^^^^^^^^^^ F401
+7 | from app.routes.tools import router as tools_router
+8 | from app.routes.webhooks import router as webhooks_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:7:40: F401 `app.routes.tools.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+5 | from app.routes.ws import router as ws_router
+6 | from app.routes.auth import router as auth_router
+7 | from app.routes.tools import router as tools_router
+  |                                        ^^^^^^^^^^^^ F401
+8 | from app.routes.webhooks import router as webhooks_router
+9 | from app.routes.schedules import router as schedules_router
+  |
+  = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:8:43: F401 `app.routes.webhooks.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 6 | from app.routes.auth import router as auth_router
+ 7 | from app.routes.tools import router as tools_router
+ 8 | from app.routes.webhooks import router as webhooks_router
+   |                                           ^^^^^^^^^^^^^^^ F401
+ 9 | from app.routes.schedules import router as schedules_router
+10 | from app.routes.playground import router as playground_router
+   |
+   = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:9:44: F401 `app.routes.schedules.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 7 | from app.routes.tools import router as tools_router
+ 8 | from app.routes.webhooks import router as webhooks_router
+ 9 | from app.routes.schedules import router as schedules_router
+   |                                            ^^^^^^^^^^^^^^^^ F401
+10 | from app.routes.playground import router as playground_router
+11 | from app.routes.knowledge import router as knowledge_router
+   |
+   = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:10:45: F401 `app.routes.playground.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 8 | from app.routes.webhooks import router as webhooks_router
+ 9 | from app.routes.schedules import router as schedules_router
+10 | from app.routes.playground import router as playground_router
+   |                                             ^^^^^^^^^^^^^^^^^ F401
+11 | from app.routes.knowledge import router as knowledge_router
+   |
+   = help: Use an explicit re-export: `router as router`
+
+app\routes\__init__.py:11:44: F401 `app.routes.knowledge.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   |
+ 9 | from app.routes.schedules import router as schedules_router
+10 | from app.routes.playground import router as playground_router
+11 | from app.routes.knowledge import router as knowledge_router
+   |                                            ^^^^^^^^^^^^^^^^ F401
+   |
+   = help: Use an explicit re-export: `router as router`
+
+app\routes\ws.py:13:13: F841 Local variable `data` is assigned to but never used
+   |
+11 |         while True:
+12 |             # Keep connection alive; client can also send messages
+13 |             data = await websocket.receive_text()
+   |             ^^^^ F841
+14 |     except WebSocketDisconnect:
+15 |         ws_manager.disconnect(execution_id, websocket)
+   |
+   = help: Remove assignment to unused variable `data`
+
+app\services\__init__.py:1:40: F401 `app.services.agent_service.AgentService` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.services.agent_service import AgentService
+  |                                        ^^^^^^^^^^^^ F401
+2 | from app.services.task_service import TaskService
+3 | from app.services.execution_service import ExecutionService
+  |
+  = help: Use an explicit re-export: `AgentService as AgentService`
+
+app\services\__init__.py:2:39: F401 `app.services.task_service.TaskService` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.services.agent_service import AgentService
+2 | from app.services.task_service import TaskService
+  |                                       ^^^^^^^^^^^ F401
+3 | from app.services.execution_service import ExecutionService
+4 | from app.services.orchestrator import Orchestrator
+  |
+  = help: Use an explicit re-export: `TaskService as TaskService`
+
+app\services\__init__.py:3:44: F401 `app.services.execution_service.ExecutionService` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.services.agent_service import AgentService
+2 | from app.services.task_service import TaskService
+3 | from app.services.execution_service import ExecutionService
+  |                                            ^^^^^^^^^^^^^^^^ F401
+4 | from app.services.orchestrator import Orchestrator
+  |
+  = help: Use an explicit re-export: `ExecutionService as ExecutionService`
+
+app\services\__init__.py:4:39: F401 `app.services.orchestrator.Orchestrator` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+2 | from app.services.task_service import TaskService
+3 | from app.services.execution_service import ExecutionService
+4 | from app.services.orchestrator import Orchestrator
+  |                                       ^^^^^^^^^^^^ F401
+  |
+  = help: Use an explicit re-export: `Orchestrator as Orchestrator`
+
+app\tools\__init__.py:1:32: F401 `app.tools.registry.tool_registry` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.tools.registry import tool_registry, AVAILABLE_TOOLS
+  |                                ^^^^^^^^^^^^^ F401
+  |
+  = help: Use an explicit re-export: `tool_registry as tool_registry`
+
+app\tools\__init__.py:1:47: F401 `app.tools.registry.AVAILABLE_TOOLS` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | from app.tools.registry import tool_registry, AVAILABLE_TOOLS
+  |                                               ^^^^^^^^^^^^^^^ F401
+  |
+  = help: Use an explicit re-export: `AVAILABLE_TOOLS as AVAILABLE_TOOLS`
+
+scripts\seed_demo_agents.py:138:9: F841 Local variable `result` is assigned to but never used
+    |
+136 |             "updatedAt": now,
+137 |         }
+138 |         result = db.agents.update_one(
+    |         ^^^^^^ F841
+139 |             {"name": spec["name"]},
+140 |             {
+    |
+    = help: Remove assignment to unused variable `result`
+
+seed_data.py:18:5: F841 Local variable `db` is assigned to but never used
+   |
+16 |     await connect_db()
+17 |     
+18 |     db = get_db()
+   |     ^^ F841
+19 |     
+20 |     # 1. Clean old data (optional)
+   |
+   = help: Remove assignment to unused variable `db`
+
+tests\conftest.py:12:1: E402 Module level import not at top of file
+   |
+10 |     sys.path.insert(0, str(BACKEND_ROOT))
+11 |
+12 | import app.main as main_module
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ E402
+   |
+
+tests\test_task_lifecycle.py:67:9: F841 Local variable `task` is assigned to but never used
+   |
+65 |             assignedAgentId="agent-1",
+66 |         )
+67 |         task = await TaskService.create_task(data)
+   |         ^^^^ F841
+68 |
+69 |         # Verify the task was created with QUEUED status
+   |
+   = help: Remove assignment to unused variable `task`
+
+tests\test_task_lifecycle.py:102:65: F841 Local variable `MockOrch` is assigned to but never used
+    |
+100 |         bg_tasks = MagicMock(spec=BackgroundTasks)
+101 |
+102 |         with patch("app.utils.task_dispatcher.Orchestrator") as MockOrch:
+    |                                                                 ^^^^^^^^ F841
+103 |             await dispatch_task_execution("task-1", background_tasks=bg_tasks)
+104 |             bg_tasks.add_task.assert_called_once()
+    |
+    = help: Remove assignment to unused variable `MockOrch`
+
+Found 40 errors.
+No fixes available (5 hidden fixes can be enabled with the `--unsafe-fixes` option).

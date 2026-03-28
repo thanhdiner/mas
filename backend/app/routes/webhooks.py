@@ -17,7 +17,6 @@ from app.models.webhook import (
     WebhookCreate,
     WebhookRuntimeHealthResponse,
     WebhookDeliveryListResponse,
-    WebhookDeliveryResponse,
     WebhookDeliveryStatus,
     WebhookResponse,
     WebhookSecretResponse,

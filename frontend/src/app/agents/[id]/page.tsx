@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import Fuse from "fuse.js";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Loader2, Save, Settings2 } from "lucide-react";
 
@@ -334,8 +335,18 @@ export default function AgentFormPage() {
   >([]);
   const [selectedToolNames, setSelectedToolNames] = useState<string[]>([]);
   const [toolSearch, setToolSearch] = useState("");
+  const [debouncedToolSearch, setDebouncedToolSearch] = useState("");
   const [selectedSubAgentIds, setSelectedSubAgentIds] = useState<string[]>([]);
   const [subAgentSearch, setSubAgentSearch] = useState("");
+  const [debouncedSubAgentSearch, setDebouncedSubAgentSearch] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedToolSearch(toolSearch);
+      setDebouncedSubAgentSearch(subAgentSearch);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [toolSearch, subAgentSearch]);
 
   const [form, setForm] = useState({
     name: "",
@@ -416,8 +427,8 @@ export default function AgentFormPage() {
             systemPrompt: agent.systemPrompt,
             maxSteps: agent.maxSteps,
             active: agent.active,
-            model: (agent as any).model || "",
-            provider: (agent as any).provider || "",
+            model: agent.model || "",
+            provider: agent.provider || "",
           });
           setAgentToolConfig(nextToolConfig);
           setToolConfigForms(buildToolConfigForms(loadedTools, nextToolConfig));
@@ -472,14 +483,15 @@ export default function AgentFormPage() {
     [toolConfigForms, visibleConfigurableTools]
   );
   const filteredToolOptions = useMemo(() => {
-    const query = toolSearch.trim().toLowerCase();
-    return toolCatalog.filter((tool) => {
-      if (!query) {
-        return true;
-      }
-      return [tool.name, tool.description].join(" ").toLowerCase().includes(query);
+    const query = debouncedToolSearch.trim();
+    if (!query) return toolCatalog;
+
+    const fuse = new Fuse(toolCatalog, {
+      keys: ["name", "description"],
+      threshold: 0.4,
     });
-  }, [toolCatalog, toolSearch]);
+    return fuse.search(query).map((res) => res.item);
+  }, [toolCatalog, debouncedToolSearch]);
   const selectedTools = useMemo(
     () =>
       selectedToolNames.map((toolName) => {
@@ -509,19 +521,16 @@ export default function AgentFormPage() {
     [availableAgents, selectedSubAgentIds]
   );
   const filteredSubAgentOptions = useMemo(() => {
-    const query = subAgentSearch.trim().toLowerCase();
-    return availableAgents
-      .filter((agent) => agent.id !== currentAgentId)
-      .filter((agent) => {
-        if (!query) {
-          return true;
-        }
-        return [agent.name, agent.role, agent.description]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
-      });
-  }, [availableAgents, currentAgentId, subAgentSearch]);
+    const validAgents = availableAgents.filter((agent) => agent.id !== currentAgentId);
+    const query = debouncedSubAgentSearch.trim();
+    if (!query) return validAgents;
+
+    const fuse = new Fuse(validAgents, {
+      keys: ["name", "role", "description"],
+      threshold: 0.4,
+    });
+    return fuse.search(query).map((res) => res.item);
+  }, [availableAgents, currentAgentId, debouncedSubAgentSearch]);
 
   useEffect(() => {
     const visibleNames = visibleConfigurableTools.map((tool) => tool.name);

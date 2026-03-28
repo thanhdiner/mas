@@ -11,7 +11,6 @@ ChromaDB provides persistent local vector storage without external dependency.
 
 import os
 import logging
-import uuid
 from typing import Optional
 
 logger = logging.getLogger("vector_store")

@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request, Response
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -13,7 +13,10 @@ from app.services.auth_service import AuthService, verify_password, create_acces
 router = APIRouter()
 settings = get_settings()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX}/auth/login")
+COOKIE_NAME = "mas_token"
+COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX}/auth/login", auto_error=False)
 
 # Configure Cloudinary from URL
 if settings.CLOUDINARY_URL:
@@ -40,14 +43,23 @@ def _user_response(user: UserInDB) -> UserResponse:
     )
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
+async def get_current_user(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
+) -> UserInDB:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    # Priority: Authorization header > cookie fallback
+    resolved_token = token or request.cookies.get(COOKIE_NAME)
+    if not resolved_token:
+        raise credentials_exception
+
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(resolved_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -75,7 +87,10 @@ async def register(user_in: UserCreate):
     return _user_response(new_user)
 
 @router.post("/login", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login_for_access_token(
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+):
     user = await AuthService.get_user_by_email(form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -87,7 +102,30 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
+
+    # Set HttpOnly cookie for Next.js Middleware SSR auth
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=access_token,
+        max_age=COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=not settings.DEBUG,
+        path="/",
+    )
+
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(
+        key=COOKIE_NAME,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=not settings.DEBUG,
+    )
+    return {"message": "Logged out successfully"}
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: UserInDB = Depends(get_current_active_user)):
@@ -178,7 +216,7 @@ async def delete_avatar(
 
     try:
         cloudinary.uploader.destroy(f"mas/avatars/user_{current_user.id}")
-    except Exception as e:
+    except Exception:
         # We don't fail if Cloudinary deletion fails (e.g. already deleted), just remove from DB
         pass
 
