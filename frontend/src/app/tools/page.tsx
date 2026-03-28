@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Fuse from "fuse.js";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen,
@@ -14,6 +15,7 @@ import {
   Send,
   Trash2,
   Wrench,
+  X,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
@@ -105,6 +107,7 @@ export default function ToolsPage() {
   const [credentials, setCredentials] = useState<ToolCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loadError, setLoadError] = useState("");
   const [savingSettings, setSavingSettings] = useState<Record<string, boolean>>(
     {}
@@ -135,6 +138,13 @@ export default function ToolsPage() {
 
   const openToolName = searchParams.get("setup");
   const activeTool = tools.find((tool) => tool.name === openToolName);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -460,11 +470,21 @@ export default function ToolsPage() {
     }
   };
 
-  const filteredTools = tools.filter(
-    (tool) =>
-      tool.name.toLowerCase().includes(search.toLowerCase()) ||
-      tool.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTools = useMemo(() => {
+    const query = debouncedSearch.trim();
+    if (!query) {
+      return tools;
+    }
+
+    const fuse = new Fuse(tools, {
+      keys: ["name", "description"],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeMatches: false,
+    });
+
+    return fuse.search(query).map((result) => result.item);
+  }, [tools, debouncedSearch]);
 
   return (
     <>
@@ -619,9 +639,33 @@ export default function ToolsPage() {
             placeholder="Search tools..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="border-0 bg-surface-container pl-10 text-foreground placeholder:text-on-surface-dim"
+            className="border-0 bg-surface-container pl-10 pr-10 text-foreground placeholder:text-on-surface-dim"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-on-surface-dim transition-colors hover:bg-white/10 hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
+      </div>
+      
+      <div className="mb-4 flex items-center justify-between px-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-dim opacity-70">
+          {search ? (
+            <>
+              Found <span className="text-accent-cyan font-extrabold">{filteredTools.length}</span> match{filteredTools.length === 1 ? "" : "es"} for &quot;{search}&quot;
+            </>
+          ) : (
+            <>
+              Total <span className="text-accent-cyan font-extrabold">{tools.length}</span> tools in library
+            </>
+          )}
+        </p>
       </div>
 
       {loading ? (
@@ -647,6 +691,15 @@ export default function ToolsPage() {
           >
             Try a different search term.
           </p>
+          {search && (
+            <Button
+              variant="secondary"
+              onClick={() => setSearch("")}
+              className="mt-6 border-0 bg-surface-base text-foreground"
+            >
+              Clear Search
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
