@@ -1,0 +1,250 @@
+[
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 17,
+      "row": 13
+    },
+    "filename": "F:\\All Project\\mas\\backend\\app\\routes\\ws.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 20,
+            "row": 13
+          },
+          "location": {
+            "column": 13,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `data`"
+    },
+    "location": {
+      "column": 13,
+      "row": 13
+    },
+    "message": "Local variable `data` is assigned to but never used",
+    "noqa_row": 13,
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "E401",
+    "end_location": {
+      "column": 24,
+      "row": 1
+    },
+    "filename": "F:\\All Project\\mas\\backend\\gen_json.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nimport subprocess",
+          "end_location": {
+            "column": 24,
+            "row": 1
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Split imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Multiple imports on one line",
+    "noqa_row": 1,
+    "url": "https://docs.astral.sh/ruff/rules/multiple-imports-on-one-line"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 12,
+      "row": 1
+    },
+    "filename": "F:\\All Project\\mas\\backend\\gen_json.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import subprocess",
+          "end_location": {
+            "column": 24,
+            "row": 1
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Remove unused import: `json`"
+    },
+    "location": {
+      "column": 8,
+      "row": 1
+    },
+    "message": "`json` imported but unused",
+    "noqa_row": 1,
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 15,
+      "row": 138
+    },
+    "filename": "F:\\All Project\\mas\\backend\\scripts\\seed_demo_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 18,
+            "row": 138
+          },
+          "location": {
+            "column": 9,
+            "row": 138
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `result`"
+    },
+    "location": {
+      "column": 9,
+      "row": 138
+    },
+    "message": "Local variable `result` is assigned to but never used",
+    "noqa_row": 138,
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 7,
+      "row": 18
+    },
+    "filename": "F:\\All Project\\mas\\backend\\seed_data.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 10,
+            "row": 18
+          },
+          "location": {
+            "column": 5,
+            "row": 18
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `db`"
+    },
+    "location": {
+      "column": 5,
+      "row": 18
+    },
+    "message": "Local variable `db` is assigned to but never used",
+    "noqa_row": 18,
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "E402",
+    "end_location": {
+      "column": 31,
+      "row": 12
+    },
+    "filename": "F:\\All Project\\mas\\backend\\tests\\conftest.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 12
+    },
+    "message": "Module level import not at top of file",
+    "noqa_row": 12,
+    "url": "https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 13,
+      "row": 67
+    },
+    "filename": "F:\\All Project\\mas\\backend\\tests\\test_task_lifecycle.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 16,
+            "row": 67
+          },
+          "location": {
+            "column": 9,
+            "row": 67
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `task`"
+    },
+    "location": {
+      "column": 9,
+      "row": 67
+    },
+    "message": "Local variable `task` is assigned to but never used",
+    "noqa_row": 67,
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 73,
+      "row": 102
+    },
+    "filename": "F:\\All Project\\mas\\backend\\tests\\test_task_lifecycle.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 73,
+            "row": 102
+          },
+          "location": {
+            "column": 61,
+            "row": 102
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `MockOrch`"
+    },
+    "location": {
+      "column": 65,
+      "row": 102
+    },
+    "message": "Local variable `MockOrch` is assigned to but never used",
+    "noqa_row": 102,
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  }
+]

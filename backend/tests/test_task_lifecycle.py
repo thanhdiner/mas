@@ -64,7 +64,7 @@ class TestTaskLifecycle:
             input="Test input",
             assignedAgentId="agent-1",
         )
-        task = await TaskService.create_task(data)
+        await TaskService.create_task(data)
 
         # Verify the task was created with QUEUED status
         call_args = mock_db.tasks.insert_one.call_args[0][0]
@@ -99,9 +99,8 @@ class TestTaskDispatcher:
 
         bg_tasks = MagicMock(spec=BackgroundTasks)
 
-        with patch("app.utils.task_dispatcher.Orchestrator") as MockOrch:
-            await dispatch_task_execution("task-1", background_tasks=bg_tasks)
-            bg_tasks.add_task.assert_called_once()
+        await dispatch_task_execution("task-1", background_tasks=bg_tasks)
+        bg_tasks.add_task.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("app.utils.task_dispatcher.settings")

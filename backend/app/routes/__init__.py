@@ -9,3 +9,17 @@ from app.routes.webhooks import router as webhooks_router
 from app.routes.schedules import router as schedules_router
 from app.routes.playground import router as playground_router
 from app.routes.knowledge import router as knowledge_router
+
+__all__ = [
+    "agents_router",
+    "tasks_router",
+    "executions_router",
+    "dashboard_router",
+    "ws_router",
+    "auth_router",
+    "tools_router",
+    "webhooks_router",
+    "schedules_router",
+    "playground_router",
+    "knowledge_router",
+]

@@ -90,6 +90,7 @@ class TestDelegationDepth:
     ):
         """Task should fail when delegation depth exceeds MAX_DELEGATION_DEPTH."""
         mock_get_settings.return_value = mock_settings
+        mock_task_service.update_task_status = AsyncMock()
 
         from app.services.orchestrator import Orchestrator
 
@@ -173,6 +174,7 @@ class TestTaskStatusTransitions:
     ):
         """Task assigned to inactive agent should fail."""
         mock_get_settings.return_value = mock_settings
+        mock_task_service.update_task_status = AsyncMock()
         mock_task_service.get_task = AsyncMock(return_value=mock_task)
         mock_agent.active = False
         mock_agent_service.get_agent = AsyncMock(return_value=mock_agent)
@@ -197,6 +199,7 @@ class TestTaskStatusTransitions:
     ):
         """Task with non-existent agent should fail."""
         mock_get_settings.return_value = mock_settings
+        mock_task_service.update_task_status = AsyncMock()
         mock_task_service.get_task = AsyncMock(return_value=mock_task)
         mock_agent_service.get_agent = AsyncMock(return_value=None)
 
@@ -254,6 +257,7 @@ class TestDelegationHandler:
     ):
         """Delegating to an agent not in allowedSubAgents should error."""
         mock_agent.allowedSubAgents = ["agent-allowed"]
+        mock_exec_service.add_step = AsyncMock()
 
         from app.services.orchestrator import Orchestrator
 
@@ -278,6 +282,7 @@ class TestDelegationHandler:
     ):
         """Delegating to an inactive agent should error."""
         mock_agent.allowedSubAgents = ["agent-inactive"]
+        mock_exec_service.add_step = AsyncMock()
 
         inactive_agent = MagicMock()
         inactive_agent.active = False

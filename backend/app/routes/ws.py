@@ -10,6 +10,6 @@ async def websocket_execution(websocket: WebSocket, execution_id: str):
     try:
         while True:
             # Keep connection alive; client can also send messages
-            data = await websocket.receive_text()
+            await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(execution_id, websocket)

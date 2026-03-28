@@ -15,7 +15,7 @@ async def seed():
     print("Connecting to database...")
     await connect_db()
     
-    db = get_db()
+    get_db()
     
     # 1. Clean old data (optional)
     # await db.agents.delete_many({})

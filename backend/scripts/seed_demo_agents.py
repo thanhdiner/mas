@@ -135,7 +135,7 @@ def main() -> None:
             **spec,
             "updatedAt": now,
         }
-        result = db.agents.update_one(
+        db.agents.update_one(
             {"name": spec["name"]},
             {
                 "$set": payload,

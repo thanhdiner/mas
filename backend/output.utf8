@@ -1,0 +1,388 @@
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (6.0.0.post1)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\pytest_asyncio\plugin.py:207: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-8.3.5, pluggy-1.6.0
+rootdir: F:\All Project\mas\backend
+configfile: pyproject.toml
+plugins: anyio-4.9.0, langsmith-0.3.45, asyncio-0.25.3, mock-3.15.1
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None
+collected 51 items
+
+tests\test_agents_api.py .                                               [  1%]
+tests\test_api_error_handling.py ....                                    [  9%]
+tests\test_http_request_tool.py ...                                      [ 15%]
+tests\test_integration_tools.py .....                                    [ 25%]
+tests\test_orchestrator.py F...FF..FF....                                [ 52%]
+tests\test_task_lifecycle.py ....F..                                     [ 66%]
+tests\test_tool_credentials_api.py ..                                    [ 70%]
+tests\test_tool_presets_api.py ..                                        [ 74%]
+tests\test_webhooks_api.py .............                                 [100%]
+
+================================== FAILURES ===================================
+____________ TestDelegationDepth.test_exceeds_max_depth_fails_task ____________
+
+self = <test_orchestrator.TestDelegationDepth object at 0x00000217C4022790>
+mock_task_service = <MagicMock name='TaskService' id='2301097057360'>
+mock_get_settings = <MagicMock name='get_settings' id='2301091656656'>
+mock_settings = <MagicMock name='get_settings()' id='2301096740880'>
+
+    @pytest.mark.asyncio
+    @patch("app.services.orchestrator.get_settings")
+    @patch("app.services.orchestrator.TaskService")
+    async def test_exceeds_max_depth_fails_task(
+        self, mock_task_service, mock_get_settings, mock_settings
+    ):
+        """Task should fail when delegation depth exceeds MAX_DELEGATION_DEPTH."""
+        mock_get_settings.return_value = mock_settings
+    
+        from app.services.orchestrator import Orchestrator
+    
+>       await Orchestrator.execute_task("task-deep", depth=6)
+
+tests\test_orchestrator.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+task_id = 'task-deep', depth = 6
+
+    @staticmethod
+    async def execute_task(task_id: str, depth: int = 0):
+        """Main entry point for executing a task."""
+        max_depth = settings.MAX_DELEGATION_DEPTH
+    
+        if depth > max_depth:
+>           await TaskService.update_task_status(
+                task_id,
+                TaskStatus.FAILED,
+                error=f"Maximum delegation depth ({max_depth}) exceeded. Possible infinite loop.",
+            )
+E           TypeError: object MagicMock can't be used in 'await' expression
+
+app\services\orchestrator.py:83: TypeError
+__________ TestTaskStatusTransitions.test_inactive_agent_fails_task ___________
+
+self = <test_orchestrator.TestTaskStatusTransitions object at 0x00000217C4028B90>
+mock_get_settings = <MagicMock name='get_settings' id='2301098175120'>
+mock_task_service = <MagicMock name='TaskService' id='2301097774032'>
+mock_agent_service = <MagicMock name='AgentService' id='2301097779344'>
+mock_exec_service = <MagicMock name='ExecutionService' id='2301097784400'>
+mock_ws = <MagicMock name='ws_manager' id='2301097855504'>
+mock_settings = <MagicMock name='get_settings()' id='2301098228752'>
+mock_task = <MagicMock id='2301098113872'>
+mock_agent = <MagicMock id='2301098157712'>
+
+    @pytest.mark.asyncio
+    @patch("app.services.orchestrator.ws_manager")
+    @patch("app.services.orchestrator.ExecutionService")
+    @patch("app.services.orchestrator.AgentService")
+    @patch("app.services.orchestrator.TaskService")
+    @patch("app.services.orchestrator.get_settings")
+    async def test_inactive_agent_fails_task(
+        self, mock_get_settings, mock_task_service,
+        mock_agent_service, mock_exec_service, mock_ws,
+        mock_settings, mock_task, mock_agent,
+    ):
+        """Task assigned to inactive agent should fail."""
+        mock_get_settings.return_value = mock_settings
+        mock_task_service.get_task = AsyncMock(return_value=mock_task)
+        mock_agent.active = False
+        mock_agent_service.get_agent = AsyncMock(return_value=mock_agent)
+    
+        from app.services.orchestrator import Orchestrator
+>       await Orchestrator.execute_task("task-456")
+
+tests\test_orchestrator.py:181: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+task_id = 'task-456', depth = 0
+
+    @staticmethod
+    async def execute_task(task_id: str, depth: int = 0):
+        """Main entry point for executing a task."""
+        max_depth = settings.MAX_DELEGATION_DEPTH
+    
+        if depth > max_depth:
+            await TaskService.update_task_status(
+                task_id,
+                TaskStatus.FAILED,
+                error=f"Maximum delegation depth ({max_depth}) exceeded. Possible infinite loop.",
+            )
+            return
+    
+        task = await TaskService.get_task(task_id)
+        if not task:
+            return
+    
+        agent = await AgentService.get_agent(task.assignedAgentId)
+        if not agent:
+            await TaskService.update_task_status(
+                task_id, TaskStatus.FAILED, error="Assigned agent not found"
+            )
+            return
+    
+        if not agent.active:
+>           await TaskService.update_task_status(
+                task_id, TaskStatus.FAILED, error="Assigned agent is inactive"
+            )
+E           TypeError: object MagicMock can't be used in 'await' expression
+
+app\services\orchestrator.py:102: TypeError
+___________ TestTaskStatusTransitions.test_missing_agent_fails_task ___________
+
+self = <test_orchestrator.TestTaskStatusTransitions object at 0x00000217C4029450>
+mock_get_settings = <MagicMock name='get_settings' id='2301098057552'>
+mock_task_service = <MagicMock name='TaskService' id='2301095725904'>
+mock_agent_service = <MagicMock name='AgentService' id='2301097749968'>
+mock_exec_service = <MagicMock name='ExecutionService' id='2301097754512'>
+mock_ws = <MagicMock name='ws_manager' id='2301097752336'>
+mock_settings = <MagicMock name='get_settings()' id='2301093236560'>
+mock_task = <MagicMock id='2301098052816'>
+
+    @pytest.mark.asyncio
+    @patch("app.services.orchestrator.ws_manager")
+    @patch("app.services.orchestrator.ExecutionService")
+    @patch("app.services.orchestrator.AgentService")
+    @patch("app.services.orchestrator.TaskService")
+    @patch("app.services.orchestrator.get_settings")
+    async def test_missing_agent_fails_task(
+        self, mock_get_settings, mock_task_service,
+        mock_agent_service, mock_exec_service, mock_ws,
+        mock_settings, mock_task,
+    ):
+        """Task with non-existent agent should fail."""
+        mock_get_settings.return_value = mock_settings
+        mock_task_service.get_task = AsyncMock(return_value=mock_task)
+        mock_agent_service.get_agent = AsyncMock(return_value=None)
+    
+        from app.services.orchestrator import Orchestrator
+>       await Orchestrator.execute_task("task-456")
+
+tests\test_orchestrator.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+task_id = 'task-456', depth = 0
+
+    @staticmethod
+    async def execute_task(task_id: str, depth: int = 0):
+        """Main entry point for executing a task."""
+        max_depth = settings.MAX_DELEGATION_DEPTH
+    
+        if depth > max_depth:
+            await TaskService.update_task_status(
+                task_id,
+                TaskStatus.FAILED,
+                error=f"Maximum delegation depth ({max_depth}) exceeded. Possible infinite loop.",
+            )
+            return
+    
+        task = await TaskService.get_task(task_id)
+        if not task:
+            return
+    
+        agent = await AgentService.get_agent(task.assignedAgentId)
+        if not agent:
+>           await TaskService.update_task_status(
+                task_id, TaskStatus.FAILED, error="Assigned agent not found"
+            )
+E           TypeError: object MagicMock can't be used in 'await' expression
+
+app\services\orchestrator.py:96: TypeError
+_________ TestDelegationHandler.test_delegation_to_unauthorized_agent _________
+
+self = <test_orchestrator.TestDelegationHandler object at 0x00000217C402B150>
+mock_task_service = <MagicMock name='TaskService' id='2301098222416'>
+mock_agent_service = <MagicMock name='AgentService' id='2301098217936'>
+mock_exec_service = <MagicMock name='ExecutionService' id='2301097844368'>
+mock_ws = <MagicMock name='ws_manager' id='2301093137616'>
+mock_task = <MagicMock id='2301098223632'>
+mock_agent = <MagicMock id='2301098138576'>
+mock_execution = <MagicMock id='2301089717264'>
+
+    @pytest.mark.asyncio
+    @patch("app.services.orchestrator.ws_manager")
+    @patch("app.services.orchestrator.ExecutionService")
+    @patch("app.services.orchestrator.AgentService")
+    @patch("app.services.orchestrator.TaskService")
+    async def test_delegation_to_unauthorized_agent(
+        self, mock_task_service, mock_agent_service,
+        mock_exec_service, mock_ws,
+        mock_task, mock_agent, mock_execution,
+    ):
+        """Delegating to an agent not in allowedSubAgents should error."""
+        mock_agent.allowedSubAgents = ["agent-allowed"]
+    
+        from app.services.orchestrator import Orchestrator
+    
+>       result = await Orchestrator._handle_delegation(
+            mock_task, mock_agent, mock_execution,
+            {"agent_id": "agent-UNAUTHORIZED", "subtask_title": "Test", "subtask_input": "Test"},
+            depth=0,
+        )
+
+tests\test_orchestrator.py:260: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+task = <MagicMock id='2301098223632'>, agent = <MagicMock id='2301098138576'>
+execution = <MagicMock id='2301089717264'>
+args = {'agent_id': 'agent-UNAUTHORIZED', 'subtask_input': 'Test', 'subtask_title': 'Test'}
+depth = 0
+
+    @staticmethod
+    async def _handle_delegation(task, agent, execution, args: dict, depth: int) -> Optional[str]:
+        """Handle a delegation request from the LLM."""
+        target_agent_id = args.get("agent_id", "")
+        subtask_title = args.get("subtask_title", "Subtask")
+        subtask_input = args.get("subtask_input", "")
+    
+        # Validate agent is in allowed list
+        if target_agent_id not in agent.allowedSubAgents:
+            msg = f"Agent '{target_agent_id}' is not in allowed sub-agents list."
+>           await ExecutionService.add_step(
+                execution.id, task.id, agent.id,
+                StepType.ERROR, msg,
+            )
+E           TypeError: object MagicMock can't be used in 'await' expression
+
+app\services\orchestrator.py:372: TypeError
+___________ TestDelegationHandler.test_delegation_to_inactive_agent ___________
+
+self = <test_orchestrator.TestDelegationHandler object at 0x00000217C402BA50>
+mock_task_service = <MagicMock name='TaskService' id='2301098976208'>
+mock_agent_service = <MagicMock name='AgentService' id='2301096671760'>
+mock_exec_service = <MagicMock name='ExecutionService' id='2301098456656'>
+mock_ws = <MagicMock name='ws_manager' id='2301098452432'>
+mock_task = <MagicMock id='2301098201296'>
+mock_agent = <MagicMock id='2301098969680'>
+mock_execution = <MagicMock id='2301098974160'>
+
+    @pytest.mark.asyncio
+    @patch("app.services.orchestrator.ws_manager")
+    @patch("app.services.orchestrator.ExecutionService")
+    @patch("app.services.orchestrator.AgentService")
+    @patch("app.services.orchestrator.TaskService")
+    async def test_delegation_to_inactive_agent(
+        self, mock_task_service, mock_agent_service,
+        mock_exec_service, mock_ws,
+        mock_task, mock_agent, mock_execution,
+    ):
+        """Delegating to an inactive agent should error."""
+        mock_agent.allowedSubAgents = ["agent-inactive"]
+    
+        inactive_agent = MagicMock()
+        inactive_agent.active = False
+        mock_agent_service.get_agent = AsyncMock(return_value=inactive_agent)
+    
+        from app.services.orchestrator import Orchestrator
+    
+>       result = await Orchestrator._handle_delegation(
+            mock_task, mock_agent, mock_execution,
+            {"agent_id": "agent-inactive", "subtask_title": "Test", "subtask_input": "Test"},
+            depth=0,
+        )
+
+tests\test_orchestrator.py:288: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+task = <MagicMock id='2301098201296'>, agent = <MagicMock id='2301098969680'>
+execution = <MagicMock id='2301098974160'>
+args = {'agent_id': 'agent-inactive', 'subtask_input': 'Test', 'subtask_title': 'Test'}
+depth = 0
+
+    @staticmethod
+    async def _handle_delegation(task, agent, execution, args: dict, depth: int) -> Optional[str]:
+        """Handle a delegation request from the LLM."""
+        target_agent_id = args.get("agent_id", "")
+        subtask_title = args.get("subtask_title", "Subtask")
+        subtask_input = args.get("subtask_input", "")
+    
+        # Validate agent is in allowed list
+        if target_agent_id not in agent.allowedSubAgents:
+            msg = f"Agent '{target_agent_id}' is not in allowed sub-agents list."
+            await ExecutionService.add_step(
+                execution.id, task.id, agent.id,
+                StepType.ERROR, msg,
+            )
+            return f"ERROR: {msg}"
+    
+        target_agent = await AgentService.get_agent(target_agent_id)
+        if not target_agent or not target_agent.active:
+            msg = "Target agent not found or inactive."
+>           await ExecutionService.add_step(
+                execution.id, task.id, agent.id,
+                StepType.ERROR, msg,
+            )
+E           TypeError: object MagicMock can't be used in 'await' expression
+
+app\services\orchestrator.py:381: TypeError
+____________ TestTaskDispatcher.test_dispatch_to_background_tasks _____________
+
+self = <test_task_lifecycle.TestTaskDispatcher object at 0x00000217C4048610>
+mock_settings = <MagicMock name='settings' id='2301088759632'>
+
+    @pytest.mark.asyncio
+    @patch("app.utils.task_dispatcher.settings")
+    async def test_dispatch_to_background_tasks(self, mock_settings):
+        """When USE_CELERY is False, should use BackgroundTasks."""
+        mock_settings.USE_CELERY = False
+    
+        from app.utils.task_dispatcher import dispatch_task_execution
+        from fastapi import BackgroundTasks
+    
+        bg_tasks = MagicMock(spec=BackgroundTasks)
+    
+>       with patch("app.utils.task_dispatcher.Orchestrator"):
+
+tests\test_task_lifecycle.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\unittest\mock.py:1427: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x00000217C3A16690>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'app.utils.task_dispatcher' from 'F:\\All Project\\mas\\backend\\app\\utils\\task_dispatcher.py'> does not have the attribute 'Orchestrator'
+
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\unittest\mock.py:1400: AttributeError
+============================== warnings summary ===============================
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\pydantic\_internal\_config.py:291
+C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\pydantic\_internal\_config.py:291
+  C:\Users\Gaming 3\AppData\Local\Programs\Python\Python311\Lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_orchestrator.py::TestDelegationDepth::test_exceeds_max_depth_fails_task
+FAILED tests/test_orchestrator.py::TestTaskStatusTransitions::test_inactive_agent_fails_task
+FAILED tests/test_orchestrator.py::TestTaskStatusTransitions::test_missing_agent_fails_task
+FAILED tests/test_orchestrator.py::TestDelegationHandler::test_delegation_to_unauthorized_agent
+FAILED tests/test_orchestrator.py::TestDelegationHandler::test_delegation_to_inactive_agent
+FAILED tests/test_task_lifecycle.py::TestTaskDispatcher::test_dispatch_to_background_tasks
+================== 6 failed, 45 passed, 3 warnings in 0.74s ===================

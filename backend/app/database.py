@@ -14,6 +14,7 @@ async def connect_db():
 
     # Create indexes
     await db.agents.create_index("name", unique=True)
+    await db.agents.create_index("role")
     await db.tasks.create_index("status")
     await db.tasks.create_index("assignedAgentId")
     await db.tasks.create_index("parentTaskId")
