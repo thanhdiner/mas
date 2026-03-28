@@ -723,14 +723,14 @@ export default function ToolsPage() {
 
       <Dialog open={!!activeTool} onOpenChange={(open) => !open && closeSettings()}>
         <DialogContent
-          className="sm:max-w-md"
+          className="sm:max-w-md max-h-[90vh] flex flex-col"
           style={{
             background: "var(--surface-high)",
             borderColor: "rgba(255,255,255,0.1)",
             borderWidth: "1px",
           }}
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 font-heading">
               {activeTool ? (
                 TOOL_ICONS[activeTool.name] ? (
@@ -746,7 +746,7 @@ export default function ToolsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-2">
+          <div className="py-2 overflow-y-auto custom-scrollbar flex-1 px-1">
             <p className="mb-6 text-sm" style={{ color: "var(--on-surface-dim)" }}>
               Customize global behavior for this tool across the entire workspace.
               These settings can be overridden on individual agents.
@@ -944,21 +944,21 @@ export default function ToolsPage() {
         }}
       >
         <DialogContent
-          className="sm:max-w-lg"
+          className="sm:max-w-lg max-h-[90vh] flex flex-col"
           style={{
             background: "var(--surface-high)",
             borderColor: "rgba(255,255,255,0.1)",
             borderWidth: "1px",
           }}
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 font-heading">
               <PencilLine className="h-5 w-5 text-accent-cyan" />
               {editingPreset ? "Edit Tool Preset" : "New Tool Preset"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto custom-scrollbar flex-1 px-1">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Tool
@@ -1114,21 +1114,21 @@ export default function ToolsPage() {
         }}
       >
         <DialogContent
-          className="sm:max-w-lg"
+          className="sm:max-w-lg max-h-[90vh] flex flex-col"
           style={{
             background: "var(--surface-high)",
             borderColor: "rgba(255,255,255,0.1)",
             borderWidth: "1px",
           }}
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 font-heading">
               <KeyRound className="h-5 w-5 text-accent-cyan" />
               {editingCredential ? "Edit Credential" : "New Credential"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto custom-scrollbar flex-1 px-1">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Credential Name

@@ -2664,7 +2664,7 @@ export default function WebhooksPage() {
         }}
       >
         <DialogContent
-          className="sm:max-w-2xl"
+          className="sm:max-w-2xl max-h-[90vh] flex flex-col"
           style={{
             background: "var(--surface-high)",
             borderColor: "rgba(255,255,255,0.1)",
@@ -2678,7 +2678,7 @@ export default function WebhooksPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-5 py-2 md:grid-cols-2">
+          <div className="grid gap-5 py-2 md:grid-cols-2 overflow-y-auto custom-scrollbar flex-1 px-1">
             <div className="md:col-span-2">
               <Label className="mb-1.5 block text-sm font-medium text-foreground">
                 Webhook Name
@@ -2855,7 +2855,7 @@ export default function WebhooksPage() {
         }}
       >
         <DialogContent
-          className="sm:max-w-4xl"
+          className="sm:max-w-4xl max-h-[90vh] flex flex-col"
           style={{
             background: "var(--surface-high)",
             borderColor: "rgba(255,255,255,0.1)",
@@ -2872,7 +2872,7 @@ export default function WebhooksPage() {
           </DialogHeader>
 
           {testNotificationPreview && (
-            <div className="grid gap-4 py-2">
+            <div className="grid gap-4 py-2 overflow-y-auto custom-scrollbar flex-1 px-1">
               <div className="rounded-2xl bg-surface-container p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="grid gap-3 md:grid-cols-2">
@@ -3523,7 +3523,7 @@ export default function WebhooksPage() {
         }}
       >
         <DialogContent
-          className="sm:max-w-3xl"
+          className="sm:max-w-3xl max-h-[90vh] flex flex-col"
           style={{
             background: "var(--surface-high)",
             borderColor: "rgba(255,255,255,0.1)",
@@ -3538,7 +3538,7 @@ export default function WebhooksPage() {
           </DialogHeader>
 
           {debugDelivery && (
-            <div className="grid gap-4 py-2">
+            <div className="grid gap-4 py-2 overflow-y-auto custom-scrollbar flex-1 px-1">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl bg-surface-container p-4">
                   <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
