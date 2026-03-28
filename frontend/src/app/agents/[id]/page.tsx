@@ -608,94 +608,103 @@ export default function AgentFormPage() {
 
       <form onSubmit={handleSubmit} className="max-w-7xl w-full mx-auto space-y-8 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_480px] lg:gap-x-8 lg:gap-y-6 lg:items-start lg:grid-flow-row-dense mb-16 px-4 sm:px-0">
         {/* Basic Info */}
-        <div className="lg:col-start-1 space-y-6 lg:row-span-2">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label
-              htmlFor="name"
-              className="text-[11px] uppercase tracking-[0.05rem]"
-              style={{ color: "var(--on-surface-dim)" }}
-            >
-              Agent Name
-            </Label>
-            <Input
-              id="name"
-              value={form.name}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, name: event.target.value }))
-              }
-              placeholder="e.g., Research Agent"
-              required
-              className="border-0 bg-surface-container text-foreground"
-            />
+        <section
+          className="lg:col-start-1 lg:row-span-2 rounded-3xl border border-white/5 p-6 shadow-sm flex flex-col h-full"
+          style={{ background: "var(--surface-container)" }}
+        >
+          <div className="mb-6 flex items-center gap-2 border-b border-white/5 pb-3">
+             <div className="h-5 w-1.5 rounded-full bg-accent-cyan" />
+             <h2 className="font-heading text-lg font-semibold text-foreground">Agent Identity & Prompt</h2>
           </div>
-          <div className="space-y-2">
-            <Label
-              htmlFor="role"
-              className="text-[11px] uppercase tracking-[0.05rem]"
-              style={{ color: "var(--on-surface-dim)" }}
-            >
-              Role
-            </Label>
-            <Input
-              id="role"
-              value={form.role}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, role: event.target.value }))
-              }
-              placeholder="e.g., Senior Researcher"
-              required
-              className="border-0 bg-surface-container text-foreground"
-            />
+
+          <div className="space-y-6 flex-1 flex flex-col">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="name"
+                  className="text-xs uppercase tracking-[0.05rem] font-bold"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Agent Name
+                </Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  placeholder="e.g., Research Agent"
+                  required
+                  className="border-0 bg-surface-lowest text-foreground h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="role"
+                  className="text-xs uppercase tracking-[0.05rem] font-bold"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Role
+                </Label>
+                <Input
+                  id="role"
+                  value={form.role}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, role: event.target.value }))
+                  }
+                  placeholder="e.g., Senior Researcher"
+                  required
+                  className="border-0 bg-surface-lowest text-foreground h-11"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="description"
+                className="text-xs uppercase tracking-[0.05rem] font-bold"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                value={form.description}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+                placeholder="What does this agent do?"
+                rows={3}
+                className="resize-none border-0 bg-surface-lowest text-foreground"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 flex flex-col min-h-[300px]">
+              <Label
+                htmlFor="systemPrompt"
+                className="text-xs uppercase tracking-[0.05rem] font-bold"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                System Prompt
+              </Label>
+              <Textarea
+                id="systemPrompt"
+                value={form.systemPrompt}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    systemPrompt: event.target.value,
+                  }))
+                }
+                placeholder="Define the agent's behavior and personality..."
+                className="flex-1 resize-y border-0 bg-surface-lowest font-mono text-sm leading-relaxed text-foreground p-4 h-full"
+              />
+            </div>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="description"
-            className="text-[11px] uppercase tracking-[0.05rem]"
-            style={{ color: "var(--on-surface-dim)" }}
-          >
-            Description
-          </Label>
-          <Textarea
-            id="description"
-            value={form.description}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                description: event.target.value,
-              }))
-            }
-            placeholder="What does this agent do?"
-            rows={3}
-            className="resize-none border-0 bg-surface-container text-foreground"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="systemPrompt"
-            className="text-[11px] uppercase tracking-[0.05rem]"
-            style={{ color: "var(--on-surface-dim)" }}
-          >
-            System Prompt
-          </Label>
-          <Textarea
-            id="systemPrompt"
-            value={form.systemPrompt}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                systemPrompt: event.target.value,
-              }))
-            }
-            placeholder="Define the agent's behavior and personality..."
-            rows={6}
-            className="resize-none border-0 bg-surface-lowest font-mono text-sm text-foreground"
-          />
-        </div>
-        </div>
+        </section>
 
         {/* Tools Section */}
         <section
