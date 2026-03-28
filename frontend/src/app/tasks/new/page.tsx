@@ -78,7 +78,7 @@ export default function CreateTaskPage() {
           </div>
 
           {/* Input */}
-          <div className="space-y-3 flex flex-col pt-2 h-[calc(100%-8rem)]">
+          <div className="space-y-3 pt-2">
             <Label
               htmlFor="input"
               className="text-xs uppercase tracking-[0.05rem] font-bold"
