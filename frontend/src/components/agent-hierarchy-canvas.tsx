@@ -1,415 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel, useNodesState, useEdgesState, addEdge, ConnectionMode } from "@xyflow/react";
-import type { Node, Edge, Connection, OnConnect, NodeTypes, EdgeTypes } from "@xyflow/react";
+import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel, ConnectionMode } from "@xyflow/react";
+import type { NodeTypes, EdgeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Link from "next/link";
 import { Play, Square, Loader2, Save, Undo2, LayoutGrid, AlertTriangle, Plus, GitBranch, X, Bot, Info, Unlink } from "lucide-react";
 
-import { api, type Agent } from "@/lib/api";
-import { parseWsMessage } from "@/lib/ws-types";
-import { hasHierarchyCycle, sanitizeAllowedSubAgents } from "@/lib/agent-hierarchy";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-
-import { NODE_COLORS, type AgentNodeData, type ExecState } from "./canvas/constants";
-import { loadPositions, savePositions, buildNodesAndEdges } from "./canvas/utils";
-import { getExecutionWebSocketUrl } from "@/lib/api";
+import { NODE_COLORS } from "./canvas/constants";
 import { AgentNode } from "./canvas/AgentNode";
 import { DeletableEdge } from "./canvas/DeletableEdge";
 import { SidebarInspector } from "./canvas/SidebarInspector";
 import { RunWorkflowDialog } from "./canvas/RunWorkflowDialog";
-import { ExecutionLog, type LogEntry } from "./canvas/ExecutionLog";
+import { ExecutionLog } from "./canvas/ExecutionLog";
+import { useCanvasGraph } from "./canvas/useCanvasGraph";
+import { useCanvasExecution } from "./canvas/useCanvasExecution";
 
 const nodeTypes: NodeTypes = { n8nNode: AgentNode };
 const edgeTypes: EdgeTypes = { deletableEdge: DeletableEdge };
 
 export function AgentHierarchyCanvas() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [isDirty, setIsDirty] = useState(false);
-  const savedPositionsRef = useRef<Record<string, { x: number; y: number }>>({});
+  /* ---- graph state & actions ---- */
+  const graph = useCanvasGraph();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentNodeData>>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-
-  /* ---- execution state ---- */
-  const [showRunDialog, setShowRunDialog] = useState(false);
-  const [runInput, setRunInput] = useState("");
-  const [runTitle, setRunTitle] = useState("");
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [execLog, setExecLog] = useState<LogEntry[]>([]);
-  const [execTaskId, setExecTaskId] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  const selectedAgent = useMemo(
-    () => agents.find((a) => a.id === selectedNodeId) ?? null,
-    [agents, selectedNodeId]
-  );
-
-  /* ---- helper: update single node exec state ---- */
-  const setNodeExecState = useCallback((agentId: string, state: ExecState, output?: string) => {
-    setNodes((nds) => nds.map((n) => 
-      n.id === agentId 
-        ? { ...n, data: { ...n.data, execState: state, execOutput: output ?? n.data.execOutput } }
-        : n
-    ));
-  }, [setNodes]);
-
-  const resetAllExecStates = useCallback(() => {
-    setNodes((nds) => nds.map((n) => ({
-      ...n,
-      data: { ...n.data, execState: "idle" as ExecState, execOutput: "" },
-    })));
-    setExecLog([]);
-    setExecTaskId(null);
-  }, [setNodes]);
-
-  const addLog = useCallback((text: string, type = "info") => {
-    setExecLog((prev) => [...prev, { time: new Date().toLocaleTimeString(), text, type }]);
-  }, []);
-
-  /* ---- find root agents (no parent in current edges) ---- */
-  const rootAgents = useMemo(() => {
-    const targets = new Set(edges.map((e) => e.target));
-    return agents.filter((a) => !targets.has(a.id));
-  }, [agents, edges]);
-
-  /* ---- run workflow ---- */
-  const runWorkflow = useCallback(async () => {
-    if (!runTitle.trim() || !runInput.trim()) return;
-    const rootAgent = rootAgents[0];
-    if (!rootAgent) { setLoadError("No root agent found."); return; }
-
-    setShowRunDialog(false);
-    setIsExecuting(true);
-    resetAllExecStates();
-    addLog(`Starting workflow: "${runTitle}"`, "info");
-    addLog(`Assigned to: ${rootAgent.name}`, "info");
-
-    try {
-      const task = await api.tasks.create({
-        title: runTitle,
-        input: runInput,
-        assignedAgentId: rootAgent.id,
-        createdBy: "canvas",
-        allowDelegation: true,
-        requiresApproval: false,
-      });
-      setExecTaskId(task.id);
-      addLog(`Task created: ${task.id}`, "info");
-
-      await api.tasks.execute(task.id);
-      addLog("Execution started, connecting to live feed...", "info");
-
-      // Get execution to connect WebSocket
-      setTimeout(async () => {
-        try {
-          const execution = await api.executions.getByTask(task.id);
-          if (!execution) { addLog("Could not find execution", "error"); return; }
-
-          const wsUrl = getExecutionWebSocketUrl(execution.id);
-          const ws = new WebSocket(wsUrl);
-          wsRef.current = ws;
-
-          ws.onopen = () => addLog("Connected to live feed", "info");
-
-          ws.onmessage = (event) => {
-            const msg = parseWsMessage(event);
-            if (!msg) return;
-
-            switch (msg.type) {
-              case "step":
-                setNodeExecState(msg.agentId, "running");
-                addLog(`[${msg.agentName}] ${msg.content || "Thinking..."}`, "step");
-                break;
-              case "delegation":
-                setNodeExecState(msg.fromAgentId, "waiting");
-                setNodeExecState(msg.toAgentId, "running");
-                setEdges((eds) => eds.map((e) =>
-                  e.source === msg.fromAgentId && e.target === msg.toAgentId
-                    ? { ...e, animated: true, style: { stroke: "#7bd0ff", strokeWidth: 3 } }
-                    : e
-                ));
-                addLog(`[${msg.fromAgent}] → Delegated to ${msg.toAgent}: "${msg.subtaskTitle}"`, "delegation");
-                break;
-              case "execution_completed":
-                setNodeExecState(msg.agentId, "done", msg.result.slice(0, 200));
-                addLog(`[${msg.agentName}] ✓ Completed`, "done");
-                setIsExecuting(false);
-                break;
-              case "execution_failed":
-                addLog(`✗ Execution failed: ${msg.error}`, "error");
-                setIsExecuting(false);
-                break;
-              case "tool_call":
-                setNodeExecState(msg.agentId, "running");
-                addLog(`[${msg.agentName}] 🔧 ${msg.tool}(${Object.values(msg.args).map((v: unknown) => String(v).slice(0, 30)).join(", ")})`, "step");
-                break;
-              case "tool_result":
-                addLog(`[${msg.agentName}] ← ${msg.tool}: ${msg.content.slice(0, 100)}`, "done");
-                break;
-              case "waiting_approval":
-                setNodeExecState(msg.agentId, "waiting");
-                addLog(`[${msg.agentName}] Waiting for approval`, "waiting");
-                break;
-            }
-          };
-
-          ws.onclose = () => {
-            addLog("Live feed disconnected", "info");
-            if (isExecuting) setIsExecuting(false);
-          };
-          ws.onerror = () => addLog("WebSocket error", "error");
-        } catch {
-          addLog("Could not connect to execution feed", "error");
-        }
-      }, 1000);
-
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Failed to start");
-      setIsExecuting(false);
-    }
-    setRunTitle("");
-    setRunInput("");
-  }, [runTitle, runInput, rootAgents, resetAllExecStates, addLog, setNodeExecState, setEdges, isExecuting]);
-
-  // Cleanup WS on unmount
-  useEffect(() => () => { wsRef.current?.close(); }, []);
-
-  /* ---- listen for dirty events from custom edge delete ---- */
-  useEffect(() => {
-    const handler = () => setIsDirty(true);
-    window.addEventListener("canvas-dirty", handler);
-    return () => window.removeEventListener("canvas-dirty", handler);
-  }, []);
-
-  /* ---- load ---- */
-  useEffect(() => {
-    savedPositionsRef.current = loadPositions();
-    api.agents
-      .list()
-      .then((items) => {
-        setAgents(items);
-        const { nodes: n, edges: e } = buildNodesAndEdges(items, selectedNodeId, savedPositionsRef.current);
-        setNodes(n);
-        setEdges(e);
-      })
-      .catch((err: Error) => setLoadError(err.message || "Failed to load agents."))
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* ---- highlight selection ---- */
-  useEffect(() => {
-    setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        data: { ...n.data, isSelected: n.id === selectedNodeId },
-      }))
-    );
-
-    setEdges((eds) =>
-      eds.map((e) => {
-        const connected = e.source === selectedNodeId || e.target === selectedNodeId;
-        return { ...e, animated: connected, selected: false };
-      })
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNodeId, setNodes, setEdges]); // Removed self-reference loop risk
-
-  /* ---- connection validation (prevent cycles) ---- */
-  const isValidConnection = useCallback(
-    (connection: Edge | Connection) => {
-      const src = connection.source;
-      const tgt = connection.target;
-      if (!src || !tgt) return false;
-      if (src === tgt) return false;
-
-      // Check duplicates
-      const exists = edges.some(
-        (e) => e.source === src && e.target === tgt
-      );
-      if (exists) return false;
-
-      // Check reverse (bidirectional)
-      const reverseExists = edges.some(
-        (e) => e.source === tgt && e.target === src
-      );
-      if (reverseExists) return false;
-
-      // Check cycles: build temp adjacency and run DFS
-      const adjMap: Record<string, string[]> = {};
-      for (const a of agents) adjMap[a.id] = [];
-      for (const e of edges) {
-        if (adjMap[e.source]) adjMap[e.source].push(e.target);
-      }
-      if (!adjMap[src]) adjMap[src] = [];
-      adjMap[src].push(tgt);
-
-      return !hasHierarchyCycle(adjMap);
-    },
-    [edges, agents]
-  );
-
-  /* ---- callbacks ---- */
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    setSelectedNodeId((prev) => (prev === node.id ? null : node.id));
-  }, []);
-
-  const onPaneClick = useCallback(() => {
-    setSelectedNodeId(null);
-  }, []);
-
-  const onConnect: OnConnect = useCallback(
-    (connection: Connection) => {
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...connection,
-            type: "deletableEdge",
-          },
-          eds
-        )
-      );
-      setIsDirty(true);
-      setStatusMessage("");
-    },
-    [setEdges]
-  );
-
-  const onEdgesDelete = useCallback(() => {
-    setIsDirty(true);
-  }, []);
-
-  const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
-    savedPositionsRef.current[node.id] = node.position;
-    savePositions(savedPositionsRef.current);
-  }, []);
-
-  const autoLayout = useCallback(() => {
-    savedPositionsRef.current = {};
-    savePositions({});
-    const { nodes: n, edges: e } = buildNodesAndEdges(agents, selectedNodeId, {});
-    setNodes(n);
-    setEdges(e);
-  }, [agents, selectedNodeId, setNodes, setEdges]);
-
-  const disconnectSelected = useCallback(() => {
-    if (!selectedNodeId) return;
-    setEdges((eds) =>
-      eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId)
-    );
-    setIsDirty(true);
-    setStatusMessage("");
-  }, [selectedNodeId, setEdges]);
-
-  const removeEdgeBetween = useCallback(
-    (sourceId: string, targetId: string) => {
-      setEdges((eds) =>
-        eds.filter((e) => !(e.source === sourceId && e.target === targetId))
-      );
-      setIsDirty(true);
-      setStatusMessage("");
-    },
-    [setEdges]
-  );
-
-  const revertChanges = useCallback(() => {
-    const { nodes: n, edges: e } = buildNodesAndEdges(
-      agents,
-      selectedNodeId,
-      savedPositionsRef.current
-    );
-    setNodes(n);
-    setEdges(e);
-    setIsDirty(false);
-    setStatusMessage("");
-    setLoadError("");
-  }, [agents, selectedNodeId, setNodes, setEdges]);
-
-  /* ---- save ---- */
-  const saveHierarchy = useCallback(async () => {
-    setSaving(true);
-    setLoadError("");
-    setStatusMessage("");
-
-    try {
-      const subAgentsMap: Record<string, string[]> = {};
-      for (const agent of agents) subAgentsMap[agent.id] = [];
-      for (const edge of edges) {
-        if (subAgentsMap[edge.source]) subAgentsMap[edge.source].push(edge.target);
-      }
-
-      if (hasHierarchyCycle(subAgentsMap)) {
-        throw new Error("Cycle detected — remove a connection to break the loop.");
-      }
-
-      const knownIds = new Set(agents.map((a) => a.id));
-      const changed: { id: string; subs: string[] }[] = [];
-      for (const agent of agents) {
-        const oldSubs = new Set(sanitizeAllowedSubAgents(agent, knownIds));
-        const newSubs = subAgentsMap[agent.id] ?? [];
-        const newSet = new Set(newSubs);
-        if (oldSubs.size !== newSet.size || [...oldSubs].some((s) => !newSet.has(s))) {
-          changed.push({ id: agent.id, subs: newSubs });
-        }
-      }
-
-      for (const item of changed) {
-        await api.agents.update(item.id, { allowedSubAgents: item.subs });
-      }
-
-      const updated = await api.agents.list();
-      setAgents(updated);
-
-      for (const n of nodes) savedPositionsRef.current[n.id] = n.position;
-      savePositions(savedPositionsRef.current);
-
-      const { nodes: nn, edges: ne } = buildNodesAndEdges(
-        updated,
-        selectedNodeId,
-        savedPositionsRef.current
-      );
-      setNodes(nn);
-      setEdges(ne);
-      setIsDirty(false);
-      setStatusMessage(`Saved — ${changed.length} agent(s) updated.`);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Failed to save.");
-    } finally {
-      setSaving(false);
-    }
-  }, [agents, edges, nodes, selectedNodeId, setNodes, setEdges]);
-
-  /* ---- hierarchy info (reactive to current edges, not just DB) ---- */
-  const hierarchyInfo = useMemo(() => {
-    if (!selectedNodeId || agents.length === 0) return null;
-
-    // Build from CURRENT edges (includes unsaved changes)
-    const parentEdge = edges.find((e) => e.target === selectedNodeId);
-    const parent = parentEdge
-      ? agents.find((a) => a.id === parentEdge.source) ?? null
-      : null;
-
-    const children = edges
-      .filter((e) => e.source === selectedNodeId)
-      .map((e) => agents.find((a) => a.id === e.target))
-      .filter(Boolean) as Agent[];
-
-    // Input edges (edges where this node is the target)
-    const inputEdges = edges.filter((e) => e.target === selectedNodeId);
-    const inputs = inputEdges
-      .map((e) => agents.find((a) => a.id === e.source))
-      .filter(Boolean) as Agent[];
-
-    return { parent, children, inputs };
-  }, [selectedNodeId, agents, edges]);
+  /* ---- execution state & actions ---- */
+  const exec = useCanvasExecution({
+    rootAgentId: graph.rootAgents[0]?.id,
+    rootAgentName: graph.rootAgents[0]?.name,
+    setNodes: graph.setNodes,
+    setEdges: graph.setEdges,
+  });
 
   /* ---------- render ---------- */
   return (
@@ -419,19 +40,19 @@ export function AgentHierarchyCanvas() {
         description="Visual workflow — connect agents to define delegation chains."
         actions={
           <>
-            {!isExecuting ? (
+            {!exec.isExecuting ? (
               <Button
-                onClick={() => setShowRunDialog(true)}
+                onClick={() => exec.setShowRunDialog(true)}
                 className="border-0 font-medium text-white hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #4edea3, #00c853)" }}
-                disabled={agents.length === 0}
+                disabled={graph.agents.length === 0}
               >
                 <Play className="mr-2 h-4 w-4" />
                 Run Workflow
               </Button>
             ) : (
               <Button
-                onClick={() => { wsRef.current?.close(); setIsExecuting(false); }}
+                onClick={() => { exec.wsRef.current?.close(); exec.setIsExecuting(false); }}
                 className="border-0 font-medium text-white hover:opacity-90"
                 style={{ background: "#ff6d5a" }}
               >
@@ -456,30 +77,30 @@ export function AgentHierarchyCanvas() {
       />
 
       {/* Banners */}
-      {(loadError || statusMessage) && (
+      {(graph.loadError || graph.statusMessage) && (
         <div className="mb-3 space-y-2">
-          {loadError && (
+          {graph.loadError && (
             <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm" style={{ background: "rgba(255,180,171,0.12)", color: "#ffb4ab" }}>
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <p className="flex-1">{loadError}</p>
-              <button onClick={() => setLoadError("")}><X className="h-4 w-4" /></button>
+              <p className="flex-1">{graph.loadError}</p>
+              <button onClick={() => graph.setLoadError("")}><X className="h-4 w-4" /></button>
             </div>
           )}
-          {statusMessage && (
+          {graph.statusMessage && (
             <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm" style={{ background: "rgba(78,222,163,0.12)", color: "#4edea3" }}>
-              <p className="flex-1">{statusMessage}</p>
-              <button onClick={() => setStatusMessage("")}><X className="h-4 w-4" /></button>
+              <p className="flex-1">{graph.statusMessage}</p>
+              <button onClick={() => graph.setStatusMessage("")}><X className="h-4 w-4" /></button>
             </div>
           )}
         </div>
       )}
 
-      {loading ? (
+      {graph.loading ? (
         <div className="flex items-center justify-center rounded-2xl py-24 text-sm" style={{ background: "#1a1d26", color: "rgba(232,234,237,0.5)" }}>
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           Loading canvas...
         </div>
-      ) : agents.length === 0 ? (
+      ) : graph.agents.length === 0 ? (
         <div className="rounded-2xl px-6 py-20 text-center" style={{ background: "#1a1d26" }}>
           <Bot className="mx-auto mb-4 h-12 w-12" style={{ color: "rgba(232,234,237,0.3)" }} />
           <p className="font-heading text-xl font-semibold" style={{ color: "#e8eaed" }}>No agents yet</p>
@@ -522,18 +143,18 @@ export function AgentHierarchyCanvas() {
             `}</style>
 
             <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onEdgesDelete={onEdgesDelete}
-              onNodeClick={onNodeClick}
-              onPaneClick={onPaneClick}
-              onNodeDragStop={onNodeDragStop}
+              nodes={graph.nodes}
+              edges={graph.edges}
+              onNodesChange={graph.onNodesChange}
+              onEdgesChange={graph.onEdgesChange}
+              onConnect={graph.onConnect}
+              onEdgesDelete={graph.onEdgesDelete}
+              onNodeClick={graph.onNodeClick}
+              onPaneClick={graph.onPaneClick}
+              onNodeDragStop={graph.onNodeDragStop}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
-              isValidConnection={isValidConnection}
+              isValidConnection={graph.isValidConnection}
               connectionMode={ConnectionMode.Loose}
               fitView
               fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
@@ -567,9 +188,9 @@ export function AgentHierarchyCanvas() {
 
               {/* Top-right toolbar */}
               <Panel position="top-right" className="flex items-center gap-2">
-                {selectedAgent && (
+                {graph.selectedAgent && (
                   <button
-                    onClick={disconnectSelected}
+                    onClick={graph.disconnectSelected}
                     className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:brightness-125"
                     style={{ background: "#2a2e3a", color: "#ffb4ab" }}
                     title="Disconnect all"
@@ -580,7 +201,7 @@ export function AgentHierarchyCanvas() {
                 )}
 
                 <button
-                  onClick={autoLayout}
+                  onClick={graph.autoLayout}
                   className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:brightness-125"
                   style={{ background: "#2a2e3a", color: "#e8eaed" }}
                   title="Auto-arrange"
@@ -589,10 +210,10 @@ export function AgentHierarchyCanvas() {
                   Tidy Up
                 </button>
 
-                {isDirty && (
+                {graph.isDirty && (
                   <>
                     <button
-                      onClick={revertChanges}
+                      onClick={graph.revertChanges}
                       className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:brightness-125"
                       style={{ background: "#2a2e3a", color: "#e8eaed" }}
                       title="Revert unsaved changes"
@@ -601,12 +222,12 @@ export function AgentHierarchyCanvas() {
                       Revert
                     </button>
                     <button
-                      onClick={saveHierarchy}
-                      disabled={saving}
+                      onClick={graph.saveHierarchy}
+                      disabled={graph.saving}
                       className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors hover:brightness-110"
                       style={{ background: "#ff6d5a", color: "#fff" }}
                     >
-                      {saving ? (
+                      {graph.saving ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Save className="h-3.5 w-3.5" />
@@ -635,12 +256,12 @@ export function AgentHierarchyCanvas() {
             </ReactFlow>
           </div>
 
-          {/* ---- Sidebar Inspector (n8n-style tabbed) ---- */}
+          {/* ---- Sidebar Inspector ---- */}
           <div
             className="rounded-r-2xl border border-l-0 border-white/5 flex flex-col overflow-hidden"
             style={{ background: "#1f222c", height: "calc(100vh - 190px)", minHeight: "560px" }}
           >
-            {!selectedAgent ? (
+            {!graph.selectedAgent ? (
               <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(255,255,255,0.04)" }}>
                   <Info className="h-5 w-5" style={{ color: "rgba(232,234,237,0.25)" }} />
@@ -650,20 +271,17 @@ export function AgentHierarchyCanvas() {
               </div>
             ) : (
               <SidebarInspector
-                key={selectedAgent.id}
-                agent={selectedAgent}
-                agents={agents}
-                edges={edges}
-                selectedNodeId={selectedNodeId!}
-                setSelectedNodeId={setSelectedNodeId}
-                disconnectSelected={disconnectSelected}
-                removeEdgeBetween={removeEdgeBetween}
-                hierarchyInfo={hierarchyInfo}
-                colorIndex={agents.findIndex((a) => a.id === selectedAgent.id) % NODE_COLORS.length}
-                onAgentUpdated={(updated) => {
-                  setAgents((prev) => prev.map((a) => a.id === updated.id ? updated : a));
-                  setNodes((nds) => nds.map((n) => n.id === updated.id ? { ...n, data: { ...n.data, agent: updated } } : n));
-                }}
+                key={graph.selectedAgent.id}
+                agent={graph.selectedAgent}
+                agents={graph.agents}
+                edges={graph.edges}
+                selectedNodeId={graph.selectedNodeId!}
+                setSelectedNodeId={graph.setSelectedNodeId}
+                disconnectSelected={graph.disconnectSelected}
+                removeEdgeBetween={graph.removeEdgeBetween}
+                hierarchyInfo={graph.hierarchyInfo}
+                colorIndex={graph.agents.findIndex((a) => a.id === graph.selectedAgent!.id) % NODE_COLORS.length}
+                onAgentUpdated={graph.onAgentUpdated}
               />
             )}
           </div>
@@ -672,22 +290,22 @@ export function AgentHierarchyCanvas() {
 
       {/* ---- Run Dialog Modal ---- */}
       <RunWorkflowDialog
-        showDialog={showRunDialog}
-        setShowDialog={setShowRunDialog}
-        runTitle={runTitle}
-        setRunTitle={setRunTitle}
-        runInput={runInput}
-        setRunInput={setRunInput}
-        rootAgents={rootAgents}
-        runWorkflow={runWorkflow}
+        showDialog={exec.showRunDialog}
+        setShowDialog={exec.setShowRunDialog}
+        runTitle={exec.runTitle}
+        setRunTitle={exec.setRunTitle}
+        runInput={exec.runInput}
+        setRunInput={exec.setRunInput}
+        rootAgents={graph.rootAgents}
+        runWorkflow={exec.runWorkflow}
       />
 
       {/* ---- Execution Log Panel ---- */}
       <ExecutionLog
-         execLog={execLog}
-         isExecuting={isExecuting}
-         execTaskId={execTaskId}
-         resetAllExecStates={resetAllExecStates}
+         execLog={exec.execLog}
+         isExecuting={exec.isExecuting}
+         execTaskId={exec.execTaskId}
+         resetAllExecStates={exec.resetAllExecStates}
       />
 
       {/* Global CSS */}
