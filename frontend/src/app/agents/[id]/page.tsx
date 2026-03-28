@@ -606,8 +606,10 @@ export default function AgentFormPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form onSubmit={handleSubmit} className="max-w-7xl w-full mx-auto space-y-8 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_480px] lg:gap-x-8 lg:gap-y-6 lg:items-start lg:grid-flow-row-dense mb-16 px-4 sm:px-0">
+        {/* Basic Info */}
+        <div className="lg:col-start-1 space-y-6 lg:row-span-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label
               htmlFor="name"
@@ -693,9 +695,11 @@ export default function AgentFormPage() {
             className="resize-none border-0 bg-surface-lowest font-mono text-sm text-foreground"
           />
         </div>
+        </div>
 
+        {/* Tools Section */}
         <section
-          className="rounded-3xl border border-white/5 p-5"
+          className="rounded-3xl border border-white/5 p-5 lg:col-start-2 shadow-sm"
           style={{ background: "var(--surface-container)" }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -721,7 +725,7 @@ export default function AgentFormPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="mt-5 grid gap-5 grid-cols-1">
             <div>
               <Label
                 htmlFor="toolSearch"
@@ -856,7 +860,7 @@ export default function AgentFormPage() {
         </section>
 
         <section
-          className="rounded-3xl border border-white/5 p-5"
+          className="rounded-3xl border border-white/5 p-5 lg:col-start-2 shadow-sm mt-6 lg:mt-0"
           style={{ background: "var(--surface-container)" }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -890,7 +894,7 @@ export default function AgentFormPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="mt-5 grid gap-5 grid-cols-1">
             <div>
               <Label
                 htmlFor="subAgentSearch"
@@ -1020,7 +1024,7 @@ export default function AgentFormPage() {
         </section>
 
         <section
-          className="rounded-3xl border border-white/5 p-5"
+          className="rounded-3xl border border-white/5 p-5 lg:col-start-1 shadow-sm mt-6 lg:mt-0"
           style={{ background: "var(--surface-container)" }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1285,7 +1289,7 @@ export default function AgentFormPage() {
           )}
         </section>
 
-        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:col-start-1 mt-6 lg:mt-0">
           <div className="space-y-2">
             <Label
               htmlFor="maxSteps"
@@ -1326,7 +1330,7 @@ export default function AgentFormPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-4">
+        <div className="flex items-center gap-3 pt-4 lg:col-start-1 pb-10">
           <Button
             type="submit"
             disabled={saving}
