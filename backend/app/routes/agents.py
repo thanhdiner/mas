@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Query
 
+from app.dependencies import ValidObjectId
 from app.errors import NotFoundError
 from app.models.agent import AgentCreate, AgentResponse, AgentUpdate
 from app.services.agent_service import AgentService
-from app.utils.object_id import validate_object_id, validate_object_id_list
+from app.utils.object_id import validate_object_id_list
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
@@ -18,8 +19,7 @@ async def list_agents(
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
-async def get_agent(agent_id: str):
-    validate_object_id(agent_id, "agent_id")
+async def get_agent(agent_id: ValidObjectId):
     agent = await AgentService.get_agent(agent_id)
     if not agent:
         raise NotFoundError("agent_not_found", "Agent not found")
@@ -33,8 +33,7 @@ async def create_agent(data: AgentCreate):
 
 
 @router.put("/{agent_id}", response_model=AgentResponse)
-async def update_agent(agent_id: str, data: AgentUpdate):
-    validate_object_id(agent_id, "agent_id")
+async def update_agent(agent_id: ValidObjectId, data: AgentUpdate):
     validate_object_id_list(data.allowedSubAgents, "allowedSubAgents")
     agent = await AgentService.update_agent(agent_id, data)
     if not agent:
@@ -43,8 +42,7 @@ async def update_agent(agent_id: str, data: AgentUpdate):
 
 
 @router.delete("/{agent_id}")
-async def delete_agent(agent_id: str):
-    validate_object_id(agent_id, "agent_id")
+async def delete_agent(agent_id: ValidObjectId):
     deleted = await AgentService.delete_agent(agent_id)
     if not deleted:
         raise NotFoundError("agent_not_found", "Agent not found")

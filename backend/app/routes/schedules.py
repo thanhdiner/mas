@@ -4,6 +4,7 @@ Route: /api/schedules — CRUD for scheduled triggers.
 
 from fastapi import APIRouter, HTTPException
 
+from app.dependencies import ValidObjectId
 from app.models.schedule import ScheduleCreate, ScheduleUpdate
 from app.services.scheduler import (
     create_schedule,
@@ -30,7 +31,7 @@ async def list_all():
 
 
 @router.get("/{schedule_id}")
-async def get_one(schedule_id: str):
+async def get_one(schedule_id: ValidObjectId):
     doc = await get_schedule(schedule_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -45,7 +46,7 @@ async def create(payload: ScheduleCreate):
 
 
 @router.patch("/{schedule_id}")
-async def update(schedule_id: str, payload: ScheduleUpdate):
+async def update(schedule_id: ValidObjectId, payload: ScheduleUpdate):
     data = payload.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -56,7 +57,7 @@ async def update(schedule_id: str, payload: ScheduleUpdate):
 
 
 @router.delete("/{schedule_id}")
-async def remove(schedule_id: str):
+async def remove(schedule_id: ValidObjectId):
     ok = await delete_schedule(schedule_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -64,7 +65,7 @@ async def remove(schedule_id: str):
 
 
 @router.post("/{schedule_id}/toggle")
-async def toggle(schedule_id: str, active: bool = True):
+async def toggle(schedule_id: ValidObjectId, active: bool = True):
     doc = await toggle_schedule(schedule_id, active)
     if doc is None:
         raise HTTPException(status_code=404, detail="Schedule not found")

@@ -2,6 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Query
 
+from app.dependencies import ValidObjectId
 from app.errors import BadRequestError, NotFoundError
 from app.models.task import (
     TaskCreate,
@@ -12,8 +13,8 @@ from app.models.task import (
 )
 from app.services.agent_service import AgentService
 from app.services.task_service import TaskService
-from app.utils.task_dispatcher import dispatch_task_execution
 from app.utils.object_id import validate_object_id
+from app.utils.task_dispatcher import dispatch_task_execution
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -49,8 +50,7 @@ async def list_tasks(
 
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)
-async def get_task(task_id: str):
-    validate_object_id(task_id, "task_id")
+async def get_task(task_id: ValidObjectId):
     task = await TaskService.get_task_detail(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
@@ -68,8 +68,7 @@ async def create_task(data: TaskCreate):
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(task_id: str, data: TaskUpdate):
-    validate_object_id(task_id, "task_id")
+async def update_task(task_id: ValidObjectId, data: TaskUpdate):
     if data.assignedAgentId is not None:
         await _get_active_agent_or_raise(data.assignedAgentId)
 
@@ -80,9 +79,7 @@ async def update_task(task_id: str, data: TaskUpdate):
 
 
 @router.post("/{task_id}/execute")
-async def execute_task(task_id: str, background_tasks: BackgroundTasks):
-    validate_object_id(task_id, "task_id")
-
+async def execute_task(task_id: ValidObjectId, background_tasks: BackgroundTasks):
     task = await TaskService.get_task(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
@@ -97,9 +94,7 @@ async def execute_task(task_id: str, background_tasks: BackgroundTasks):
 
 
 @router.post("/{task_id}/cancel")
-async def cancel_task(task_id: str):
-    validate_object_id(task_id, "task_id")
-
+async def cancel_task(task_id: ValidObjectId):
     task = await TaskService.get_task(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
@@ -114,10 +109,8 @@ async def cancel_task(task_id: str):
 
 
 @router.post("/{task_id}/approve")
-async def approve_task(task_id: str):
+async def approve_task(task_id: ValidObjectId):
     """Approve a task that is waiting for human approval."""
-    validate_object_id(task_id, "task_id")
-
     task = await TaskService.get_task(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
@@ -143,10 +136,8 @@ async def approve_task(task_id: str):
 
 
 @router.post("/{task_id}/reject")
-async def reject_task(task_id: str, background_tasks: BackgroundTasks):
+async def reject_task(task_id: ValidObjectId, background_tasks: BackgroundTasks):
     """Reject a task and optionally re-execute with feedback."""
-    validate_object_id(task_id, "task_id")
-
     task = await TaskService.get_task(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")

@@ -4,6 +4,8 @@ Route: /api/tools - list tools, update tool settings, and manage credentials.
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 
+from app.dependencies import ValidObjectId
+
 from app.database import get_db
 from app.models.tool_credential import (
     ToolCredentialCreate,
@@ -89,7 +91,7 @@ async def create_tool_credential(
 
 @router.patch("/credentials/{credential_id}", response_model=ToolCredentialResponse)
 async def update_tool_credential(
-    credential_id: str,
+    credential_id: ValidObjectId,
     update_in: ToolCredentialUpdate,
     current_user=Depends(get_current_active_user),
 ):
@@ -102,7 +104,7 @@ async def update_tool_credential(
 
 @router.delete("/credentials/{credential_id}")
 async def delete_tool_credential(
-    credential_id: str,
+    credential_id: ValidObjectId,
     _current_user=Depends(get_current_active_user),
 ):
     await ToolCredentialService.delete_credential(credential_id)
@@ -130,7 +132,7 @@ async def create_tool_preset(
 
 @router.patch("/presets/{preset_id}", response_model=ToolPresetResponse)
 async def update_tool_preset(
-    preset_id: str,
+    preset_id: ValidObjectId,
     update_in: ToolPresetUpdate,
     current_user=Depends(get_current_active_user),
 ):
@@ -143,7 +145,7 @@ async def update_tool_preset(
 
 @router.delete("/presets/{preset_id}")
 async def delete_tool_preset(
-    preset_id: str,
+    preset_id: ValidObjectId,
     _current_user=Depends(get_current_active_user),
 ):
     await ToolPresetService.delete_preset(preset_id)

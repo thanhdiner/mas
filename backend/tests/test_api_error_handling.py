@@ -5,9 +5,29 @@ import app.services.agent_service as agent_service_module
 
 
 @pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    [
+        ("get", "/api/agents/not-a-valid-id", None),
+    ],
+)
+def test_invalid_path_object_id_returns_422(
+    client,
+    method: str,
+    path: str,
+    payload: dict | None,
+):
+    """Path params validated by FastAPI's `Path(pattern=...)` return 422."""
+    request_kwargs = {"json": payload} if payload is not None else {}
+    response = getattr(client, method)(path, **request_kwargs)
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["code"] == "validation_error"
+
+
+@pytest.mark.parametrize(
     ("method", "path", "payload", "field_name"),
     [
-        ("get", "/api/agents/not-a-valid-id", None, "agent_id"),
         ("get", "/api/tasks?agent_id=not-a-valid-id", None, "agent_id"),
         (
             "post",
@@ -21,13 +41,14 @@ import app.services.agent_service as agent_service_module
         ),
     ],
 )
-def test_invalid_object_id_returns_consistent_bad_request(
+def test_invalid_body_object_id_returns_400(
     client,
     method: str,
     path: str,
     payload: dict | None,
     field_name: str,
 ):
+    """Body / query params validated by our custom validate_object_id return 400."""
     request_kwargs = {"json": payload} if payload is not None else {}
     response = getattr(client, method)(path, **request_kwargs)
 

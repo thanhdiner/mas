@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import Response
 
 from app.config import get_settings
+from app.dependencies import ValidObjectId
 from app.errors import BadRequestError, NotFoundError
 from app.models.task import TaskCreate
 from app.models.user import UserInDB
@@ -181,7 +182,7 @@ async def list_webhooks():
     response_model=WebhookDeliveryListResponse,
 )
 async def list_webhook_deliveries(
-    webhook_id: str,
+    webhook_id: ValidObjectId,
     status: WebhookDeliveryStatus | None = Query(None),
     from_time: datetime | None = Query(None, alias="from"),
     to_time: datetime | None = Query(None, alias="to"),
@@ -191,7 +192,6 @@ async def list_webhook_deliveries(
 ):
     del current_user
     _validate_delivery_range(from_time, to_time)
-    validate_object_id(webhook_id, "webhook_id")
     webhook = await WebhookService.get_webhook(webhook_id)
     if not webhook:
         raise NotFoundError("webhook_not_found", "Webhook not found")
@@ -210,13 +210,12 @@ async def list_webhook_deliveries(
     dependencies=[Depends(get_current_active_user)],
 )
 async def export_webhook_deliveries(
-    webhook_id: str,
+    webhook_id: ValidObjectId,
     status: WebhookDeliveryStatus | None = Query(None),
     from_time: datetime | None = Query(None, alias="from"),
     to_time: datetime | None = Query(None, alias="to"),
 ):
     _validate_delivery_range(from_time, to_time)
-    validate_object_id(webhook_id, "webhook_id")
     webhook = await WebhookService.get_webhook(webhook_id)
     if not webhook:
         raise NotFoundError("webhook_not_found", "Webhook not found")
@@ -354,11 +353,10 @@ async def create_webhook(
 
 @router.patch("/{webhook_id}", response_model=WebhookResponse)
 async def update_webhook(
-    webhook_id: str,
+    webhook_id: ValidObjectId,
     data: WebhookUpdate,
     current_user: UserInDB = Depends(get_current_active_user),
 ):
-    validate_object_id(webhook_id, "webhook_id")
     if data.agentId is not None:
         await _get_active_agent_or_raise(data.agentId)
 
@@ -374,10 +372,9 @@ async def update_webhook(
 
 @router.delete("/{webhook_id}")
 async def delete_webhook(
-    webhook_id: str,
+    webhook_id: ValidObjectId,
     current_user: UserInDB = Depends(get_current_active_user),
 ):
-    validate_object_id(webhook_id, "webhook_id")
     deleted = await WebhookService.delete_webhook(webhook_id)
     if not deleted:
         raise NotFoundError("webhook_not_found", "Webhook not found")
@@ -386,11 +383,10 @@ async def delete_webhook(
 
 @router.post("/{webhook_id}/rotate-token", response_model=WebhookSecretResponse)
 async def rotate_webhook_token(
-    webhook_id: str,
+    webhook_id: ValidObjectId,
     request: Request,
     current_user: UserInDB = Depends(get_current_active_user),
 ):
-    validate_object_id(webhook_id, "webhook_id")
     webhook, token = await WebhookService.rotate_webhook_token(
         webhook_id,
         updated_by=current_user.id,
