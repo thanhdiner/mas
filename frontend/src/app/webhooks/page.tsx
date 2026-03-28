@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import {
   History,
@@ -516,12 +517,28 @@ function buildJsonPreviewLines(
 }
 
 export default function WebhooksPage() {
+  const queryClient = useQueryClient();
+  const { data: queryData, isLoading: loading } = useQuery({
+    queryKey: ["webhooks"],
+    queryFn: () => Promise.all([
+      api.webhooks.list(),
+      api.agents.list(true),
+      api.webhooks.getRuntimeHealth(),
+    ]),
+  });
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [runtimeHealth, setRuntimeHealth] = useState<WebhookRuntimeHealth | null>(
-    null
-  );
-  const [loading, setLoading] = useState(true);
+  const [runtimeHealth, setRuntimeHealth] = useState<WebhookRuntimeHealth | null>(null);
+
+  // Sync query data to local state (needed for local mutations)
+  useEffect(() => {
+    if (queryData) {
+      setWebhooks(queryData[0]);
+      setAgents(queryData[1]);
+      setRuntimeHealth(queryData[2]);
+    }
+  }, [queryData]);
+
   const [pageError, setPageError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
   const [search, setSearch] = useState("");
@@ -601,30 +618,9 @@ export default function WebhooksPage() {
   const [formError, setFormError] = useState("");
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
     setPageError("");
-
-    try {
-      const [webhookItems, agentItems, runtimeHealthSnapshot] = await Promise.all([
-        api.webhooks.list(),
-        api.agents.list(true),
-        api.webhooks.getRuntimeHealth(),
-      ]);
-      setWebhooks(webhookItems);
-      setAgents(agentItems);
-      setRuntimeHealth(runtimeHealthSnapshot);
-    } catch (error) {
-      setPageError(
-        error instanceof Error ? error.message : "Failed to load webhooks."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+  }, [queryClient]);
 
   useEffect(() => {
     const handler = setTimeout(() => {

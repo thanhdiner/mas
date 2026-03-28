@@ -3,6 +3,7 @@ import { Inter, Geist_Mono, Space_Grotesk } from "next/font/google";
 
 import "./globals.css";
 import { AppLayoutWrapper } from "@/components/app-layout-wrapper";
+import { QueryProvider } from "@/components/query-provider";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
 const inter = Inter({
@@ -84,7 +85,9 @@ export default function RootLayout({
     >
       <head suppressHydrationWarning />
       <body className="min-h-full flex" suppressHydrationWarning>
-        <AppLayoutWrapper>{children}</AppLayoutWrapper>
+        <QueryProvider>
+          <AppLayoutWrapper>{children}</AppLayoutWrapper>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -104,13 +105,44 @@ function ToolsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+
+  const { data: queryData, isLoading: loading } = useQuery({
+    queryKey: ["tools-page"],
+    queryFn: () => Promise.allSettled([
+      api.tools.list(),
+      api.tools.listCredentials(),
+    ]),
+  });
 
   const [tools, setTools] = useState<ToolCatalogItem[]>([]);
   const [credentials, setCredentials] = useState<ToolCredential[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loadError, setLoadError] = useState("");
+
+  // Sync query data to local state
+  useEffect(() => {
+    if (!queryData) return;
+    const [toolsResult, credentialsResult] = queryData;
+    let nextError = "";
+    if (toolsResult.status === "fulfilled") {
+      setTools(toolsResult.value);
+    } else {
+      nextError = toolsResult.reason instanceof Error
+        ? toolsResult.reason.message
+        : "Failed to load tools.";
+    }
+    if (credentialsResult.status === "fulfilled") {
+      setCredentials(credentialsResult.value);
+    } else if (!nextError) {
+      nextError = credentialsResult.reason instanceof Error
+        ? credentialsResult.reason.message
+        : "Failed to load credentials.";
+    }
+    setLoadError(nextError);
+  }, [queryData]);
+
   const [savingSettings, setSavingSettings] = useState<Record<string, boolean>>(
     {}
   );
@@ -148,69 +180,12 @@ function ToolsPageContent() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadData() {
-      setLoading(true);
-      let nextError = "";
-
-      const [toolsResult, credentialsResult] = await Promise.allSettled([
-        api.tools.list(),
-        api.tools.listCredentials(),
-      ]);
-
-      if (cancelled) {
-        return;
-      }
-
-      if (toolsResult.status === "fulfilled") {
-        setTools(toolsResult.value);
-      } else {
-        nextError =
-          toolsResult.reason instanceof Error
-            ? toolsResult.reason.message
-            : "Failed to load tools.";
-      }
-
-      if (credentialsResult.status === "fulfilled") {
-        setCredentials(credentialsResult.value);
-      } else if (!nextError) {
-        nextError =
-          credentialsResult.reason instanceof Error
-            ? credentialsResult.reason.message
-            : "Failed to load credentials.";
-      }
-
-      setLoadError(nextError);
-      setLoading(false);
-    }
-
-    loadData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const refreshCredentials = async () => {
-    try {
-      const items = await api.tools.listCredentials();
-      setCredentials(items);
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : "Failed to load credentials."
-      );
-    }
+    queryClient.invalidateQueries({ queryKey: ["tools-page"] });
   };
 
   const refreshTools = async () => {
-    try {
-      const items = await api.tools.list();
-      setTools(items);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Failed to load tools.");
-    }
+    queryClient.invalidateQueries({ queryKey: ["tools-page"] });
   };
 
   const updateSetting = async (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -21,47 +22,34 @@ import {
 } from "@/components/ui/dialog";
 
 export default function ApprovalsPage() {
-  const [pending, setPending] = useState<Task[]>([]);
-  const [history, setHistory] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: pending = [], refetch } = useQuery({
+    queryKey: ["approvals", "pending"],
+    queryFn: () => api.tasks.list({ status: "waiting_approval" }),
+    refetchInterval: 5000,
+  });
+  const { data: history = [], isLoading: loading } = useQuery({
+    queryKey: ["approvals", "history"],
+    queryFn: async () => {
+      const allTasks = await api.tasks.list({});
+      return allTasks
+        .filter(
+          (t) =>
+            t.requiresApproval &&
+            (t.status === "done" || t.status === "failed")
+        )
+        .slice(0, 20);
+    },
+    refetchInterval: 5000,
+  });
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
   const [tab, setTab] = useState<"pending" | "history">("pending");
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [pendingTasks, allTasks] = await Promise.all([
-        api.tasks.list({ status: "waiting_approval" }),
-        api.tasks.list({}),
-      ]);
-      setPending(pendingTasks);
-      // History = recently completed/failed tasks that had requiresApproval
-      setHistory(
-        allTasks
-          .filter(
-            (t) =>
-              t.requiresApproval &&
-              (t.status === "done" || t.status === "failed") 
-          )
-          .slice(0, 20)
-      );
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
 
   const handleApprove = async (taskId: string) => {
     setProcessing(taskId);
     try {
       await api.tasks.approve(taskId);
-      fetchData();
+      refetch();
     } catch (err) {
       console.error(err);
     }
@@ -72,7 +60,7 @@ export default function ApprovalsPage() {
     setProcessing(taskId);
     try {
       await api.tasks.reject(taskId);
-      fetchData();
+      refetch();
     } catch (err) {
       console.error(err);
     }

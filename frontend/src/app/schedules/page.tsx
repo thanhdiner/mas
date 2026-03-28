@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import {
   Clock,
@@ -74,13 +75,23 @@ function formatLastRun(dateStr?: string | null) {
 }
 
 export default function SchedulesPage() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ["schedules"],
+    queryFn: () => Promise.all([api.schedules.list(), api.agents.list()]),
+  });
+  const schedules = data?.[0] ?? [];
+  const agents = data?.[1] ?? [];
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
+
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -93,25 +104,6 @@ export default function SchedulesPage() {
   const [formTimezone, setFormTimezone] = useState("Asia/Ho_Chi_Minh");
   const [formActive, setFormActive] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const fetchData = useCallback(() => {
-    Promise.all([api.schedules.list(), api.agents.list()])
-      .then(([s, a]) => {
-        setSchedules(s);
-        setAgents(a);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [search]);
 
   const resetForm = () => {
     setFormName(""); setFormAgentId(""); setFormPrompt(""); setFormType("cron");
@@ -159,7 +151,7 @@ export default function SchedulesPage() {
       }
       setShowCreate(false);
       resetForm();
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
     } catch (err) {
       console.error(err);
     }
@@ -169,7 +161,7 @@ export default function SchedulesPage() {
   const handleDelete = async (id: string) => {
     try {
       await api.schedules.delete(id);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
     } catch (err) {
       console.error(err);
     }
@@ -178,7 +170,7 @@ export default function SchedulesPage() {
   const handleToggle = async (id: string, active: boolean) => {
     try {
       await api.schedules.toggle(id, active);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
     } catch (err) {
       console.error(err);
     }

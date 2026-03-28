@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   Upload,
@@ -51,8 +52,11 @@ const FILE_ICONS: Record<string, string> = {
 };
 
 export default function KnowledgePage() {
-  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: docs = [], isLoading: loading } = useQuery({
+    queryKey: ["knowledge"],
+    queryFn: () => api.knowledge.list(),
+  });
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<(KnowledgeDoc & { textPreview?: string }) | null>(null);
@@ -67,20 +71,6 @@ export default function KnowledgePage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchDocs = useCallback(async () => {
-    try {
-      const data = await api.knowledge.list();
-      setDocs(data);
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDocs();
-  }, [fetchDocs]);
-
   const handleUpload = async () => {
     if (!uploadFile) return;
     setUploading(true);
@@ -91,7 +81,7 @@ export default function KnowledgePage() {
       setUploadName("");
       setUploadDesc("");
       setUploadTags("");
-      fetchDocs();
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Upload failed");
     }
@@ -102,7 +92,7 @@ export default function KnowledgePage() {
     if (!confirm("Delete this document?")) return;
     try {
       await api.knowledge.delete(id);
-      fetchDocs();
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
     } catch {}
   };
 
