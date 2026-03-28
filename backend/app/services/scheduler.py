@@ -176,11 +176,10 @@ async def _execute_schedule(schedule_id: str):
 
     logger.info(f"Schedule '{name}' fired → Task {task_id} for Agent {agent_id}")
 
-    # Run the orchestrator in background
+    # Run the orchestrator via dispatcher (Celery or asyncio)
     try:
-        from app.services.orchestrator import Orchestrator
-        orchestrator = Orchestrator()
-        asyncio.create_task(orchestrator.execute_task(task_id))
+        from app.utils.task_dispatcher import dispatch_scheduled_task
+        dispatch_scheduled_task(task_id)
     except Exception as exc:
         logger.error(f"Orchestrator launch failed for schedule {schedule_id}: {exc}")
 

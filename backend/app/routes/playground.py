@@ -1,15 +1,16 @@
 """
 Route: /api/playground — Agent chat playground.
 Allows users to test-drive an agent with a simple chat interface.
+Uses the unified LLM Provider for multi-model support.
 """
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from openai import AsyncOpenAI
 
 from app.config import get_settings
 from app.services.agent_service import AgentService
+from app.services.llm_provider import get_llm_provider, AVAILABLE_MODELS
 from app.tools.registry import tool_registry
 from app.database import get_db
 
@@ -25,6 +26,7 @@ class ChatMessage(BaseModel):
 class PlaygroundRequest(BaseModel):
     agentId: str
     messages: list[ChatMessage]
+    model: Optional[str] = None  # Optional model override for playground
 
 
 @router.post("/chat")
@@ -33,72 +35,67 @@ async def chat(req: PlaygroundRequest):
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    api_key = (settings.OPENAI_API_KEY or "").strip()
-    if not api_key or api_key == "sk-your-openai-api-key-here":
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+    llm = get_llm_provider()
 
-    client = AsyncOpenAI(api_key=api_key)
+    # Determine model: request override > agent setting > global default
+    model = req.model or getattr(agent, "model", None) or settings.LLM_MODEL or settings.OPENAI_MODEL
+    provider = getattr(agent, "provider", None)
 
     # Build tool definitions for this agent
-    tools_defs = []
-    for tool_name in agent.allowedTools:
-        tool_meta = tool_registry.get_tool(tool_name)
-        if tool_meta:
-            tools_defs.append({
-                "type": "function",
-                "function": {
-                    "name": tool_meta["name"],
-                    "description": tool_meta["description"],
-                    "parameters": tool_meta.get("parameters", {"type": "object", "properties": {}}),
-                },
-            })
+    tools = []
+    if agent.allowedTools:
+        tools = tool_registry.get_openai_tools(agent.allowedTools)
 
     messages = [{"role": "system", "content": agent.systemPrompt}]
     for m in req.messages:
         messages.append({"role": m.role, "content": m.content})
 
-    kwargs = {
-        "model": settings.LLM_MODEL,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 2048,
-    }
-    if tools_defs:
-        kwargs["tools"] = tools_defs
-
     try:
-        response = await client.chat.completions.create(**kwargs)
-        choice = response.choices[0]
+        response = await llm.chat(
+            model=model,
+            messages=messages,
+            tools=tools if tools else None,
+            temperature=0.7,
+            max_tokens=2048,
+            provider=provider,
+        )
 
-        # If a tool call is requested, simulate tool execution
-        if choice.message.tool_calls:
-            tool_results = []
-            for tc in choice.message.tool_calls:
+        # Convert tool calls
+        tool_results = []
+        if response.message.tool_calls:
+            for tc in response.message.tool_calls:
                 tool_results.append({
-                    "name": tc.function.name,
-                    "arguments": tc.function.arguments,
+                    "name": tc.name,
+                    "arguments": tc.arguments,
                     "id": tc.id,
                 })
-            return {
-                "role": "assistant",
-                "content": choice.message.content or "",
-                "toolCalls": tool_results,
-                "usage": {
-                    "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
-                    "completion_tokens": response.usage.completion_tokens if response.usage else 0,
-                    "total_tokens": response.usage.total_tokens if response.usage else 0,
-                },
-            }
 
         return {
             "role": "assistant",
-            "content": choice.message.content or "",
-            "toolCalls": [],
-            "usage": {
-                "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
-                "completion_tokens": response.usage.completion_tokens if response.usage else 0,
-                "total_tokens": response.usage.total_tokens if response.usage else 0,
-            },
+            "content": response.message.content or "",
+            "toolCalls": tool_results,
+            "model": model,
+            "usage": response.usage,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models")
+async def list_models():
+    """List all available LLM models for the playground."""
+    # Check which providers have API keys configured
+    available = []
+    for m in AVAILABLE_MODELS:
+        provider = m["provider"]
+        has_key = False
+        if provider == "openai" and settings.OPENAI_API_KEY:
+            has_key = True
+        elif provider == "anthropic" and settings.ANTHROPIC_API_KEY:
+            has_key = True
+        elif provider == "groq" and settings.GROQ_API_KEY:
+            has_key = True
+        elif provider == "together" and settings.TOGETHER_API_KEY:
+            has_key = True
+        available.append({**m, "available": has_key})
+    return available

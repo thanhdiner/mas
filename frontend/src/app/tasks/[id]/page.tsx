@@ -23,6 +23,7 @@ import type { TaskDetail, ExecutionStep } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import ExecutionTimeline from "@/components/execution-timeline";
 
 const stepIcons: Record<string, typeof Brain> = {
   thinking: Brain,
@@ -268,104 +269,7 @@ export default function TaskDetailPage() {
             >
               Execution Timeline
             </h3>
-
-            {steps.length === 0 ? (
-              <div
-                className="text-center py-12 text-sm"
-                style={{ color: "var(--on-surface-dim)" }}
-              >
-                {isRunning ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Waiting for execution steps...
-                  </div>
-                ) : (
-                  "No execution steps recorded yet"
-                )}
-              </div>
-            ) : (
-              <div className="relative">
-                {/* Ghost Line */}
-                <div
-                  className="absolute left-[15px] top-2 bottom-2 w-[1px]"
-                  style={{ background: "rgba(69, 70, 77, 0.1)" }}
-                />
-
-                <div className="space-y-1">
-                  {steps.map((step, i) => {
-                    const Icon =
-                      stepIcons[step.stepType] || Brain;
-                    const color =
-                      stepColors[step.stepType] || "#8c92a4";
-
-                    return (
-                      <div
-                        key={step.id}
-                        className="relative flex items-start gap-4 py-3 px-1 rounded-lg animate-slide-in"
-                        style={{ animationDelay: `${i * 50}ms` }}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 z-10"
-                          style={{
-                            background: "var(--surface-high)",
-                          }}
-                        >
-                          <Icon
-                            className="w-4 h-4"
-                            style={{ color }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 pt-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span
-                              className="text-[11px] font-medium uppercase tracking-[0.05rem]"
-                              style={{ color }}
-                            >
-                              {step.stepType}
-                            </span>
-                            <span
-                              className="text-[11px]"
-                              style={{ color: "var(--on-surface-dim)" }}
-                            >
-                              {new Date(
-                                step.createdAt
-                              ).toLocaleTimeString()}
-                            </span>
-                          </div>
-                          <div
-                            className="text-sm whitespace-pre-wrap rounded-lg p-3"
-                            style={{
-                              background: "var(--surface-lowest)",
-                            }}
-                          >
-                            {step.content}
-                          </div>
-                          {step.meta &&
-                            Object.keys(step.meta).length > 0 && (
-                              <div
-                                className="mt-2 text-[11px] font-mono"
-                                style={{
-                                  color: "var(--on-surface-dim)",
-                                }}
-                              >
-                                {JSON.stringify(step.meta, null, 2)}
-                              </div>
-                            )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div ref={stepsEndRef} />
-              </div>
-            )}
-
-            {isRunning && (
-              <div className="flex items-center gap-2 mt-4 text-accent-cyan text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Execution in progress...
-              </div>
-            )}
+            <ExecutionTimeline steps={steps} isRunning={isRunning} />
           </div>
 
           {/* Result */}

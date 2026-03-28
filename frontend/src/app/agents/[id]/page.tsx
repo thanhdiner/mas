@@ -344,6 +344,8 @@ export default function AgentFormPage() {
     systemPrompt: "You are a helpful AI assistant.",
     maxSteps: 10,
     active: true,
+    model: "",
+    provider: "",
   });
 
   useEffect(() => {
@@ -414,6 +416,8 @@ export default function AgentFormPage() {
             systemPrompt: agent.systemPrompt,
             maxSteps: agent.maxSteps,
             active: agent.active,
+            model: (agent as any).model || "",
+            provider: (agent as any).provider || "",
           });
           setAgentToolConfig(nextToolConfig);
           setToolConfigForms(buildToolConfigForms(loadedTools, nextToolConfig));
@@ -618,7 +622,7 @@ export default function AgentFormPage() {
       }
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: form.name,
       role: form.role,
       description: form.description,
@@ -628,6 +632,8 @@ export default function AgentFormPage() {
       allowedSubAgents: selectedSubAgentIds,
       maxSteps: form.maxSteps,
       active: form.active,
+      model: form.model || null,
+      provider: form.provider || null,
     };
 
     try {
@@ -1497,6 +1503,58 @@ export default function AgentFormPage() {
                   }
                   className="border-0 bg-surface-low text-foreground"
                 />
+              </div>
+
+              {/* Model Selector */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="model"
+                  className="text-[11px] uppercase tracking-[0.05rem]"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  LLM Model
+                </Label>
+                <select
+                  id="model"
+                  value={form.model}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    // Auto-detect provider from model
+                    let provider = "";
+                    if (val.startsWith("gpt-") || val.startsWith("o1") || val.startsWith("o3") || val.startsWith("o4")) provider = "openai";
+                    else if (val.startsWith("claude")) provider = "anthropic";
+                    else if (val.startsWith("llama") || val.startsWith("mixtral") || val.startsWith("gemma")) provider = "groq";
+                    else if (val.includes("/")) provider = "together";
+                    setForm((current) => ({ ...current, model: val, provider }));
+                  }}
+                  className="w-full h-10 rounded-lg border-0 px-3 text-sm text-foreground"
+                  style={{ background: "var(--surface-low)" }}
+                >
+                  <option value="">System Default (auto)</option>
+                  <optgroup label="OpenAI">
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                    <option value="gpt-4.1">GPT-4.1</option>
+                  </optgroup>
+                  <optgroup label="Anthropic">
+                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                  </optgroup>
+                  <optgroup label="Groq (Fast Inference)">
+                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+                    <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                  </optgroup>
+                  <optgroup label="Together AI">
+                    <option value="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo">Llama 3.1 70B</option>
+                    <option value="mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral 8x7B</option>
+                  </optgroup>
+                </select>
+                {form.model && (
+                  <p className="text-[11px]" style={{ color: "var(--on-surface-dim)" }}>
+                    Provider: <span className="text-accent-cyan">{form.provider || "auto"}</span>
+                  </p>
+                )}
               </div>
               <div
                 className="flex items-center justify-between rounded-2xl p-3"

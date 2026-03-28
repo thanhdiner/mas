@@ -29,6 +29,25 @@ services:
       - redis
     volumes:
       - ./backend:/app
+      - chroma_data:/app/chroma_data
+
+  # Celery worker for distributed task execution
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mas-celery-worker
+    command: celery -A app.worker.celery_app worker --loglevel=info --pool=solo -c 4
+    env_file:
+      - ./backend/.env
+    environment:
+      - USE_CELERY=true
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - chroma_data:/app/chroma_data
 
   frontend:
     build:
@@ -45,3 +64,4 @@ services:
 
 volumes:
   mongo_data:
+  chroma_data:

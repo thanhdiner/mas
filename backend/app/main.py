@@ -20,6 +20,7 @@ from app.routes import (
     knowledge_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
+from app.services.vector_store import init_vector_store
 
 settings = get_settings()
 
@@ -27,6 +28,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_db()
+    await init_vector_store(settings.CHROMADB_PATH)
     await start_scheduler()
     yield
     stop_scheduler()
@@ -75,4 +77,11 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    from app.services.vector_store import is_available as vector_available
+    return {
+        "status": "ok",
+        "celery": settings.USE_CELERY,
+        "vectorStore": vector_available(),
+        "llmProvider": settings.LLM_PROVIDER,
+        "llmModel": settings.LLM_MODEL,
+    }

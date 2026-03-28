@@ -21,9 +21,30 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # LLM Providers
+    LLM_PROVIDER: str = "openai"  # openai | anthropic | groq | together
+    LLM_MODEL: str = "gpt-4o-mini"
+
     # OpenAI
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_MODEL: str = "gpt-4o-mini"  # Legacy fallback
+
+    # Anthropic
+    ANTHROPIC_API_KEY: str = ""
+
+    # Groq
+    GROQ_API_KEY: str = ""
+
+    # Together AI
+    TOGETHER_API_KEY: str = ""
+
+    # ChromaDB
+    CHROMADB_PATH: str = "./chroma_data"
+
+    # Celery
+    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    USE_CELERY: bool = False  # Toggle between BackgroundTasks and Celery
 
     # Orchestration limits
     MAX_DELEGATION_DEPTH: int = 5

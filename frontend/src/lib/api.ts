@@ -45,6 +45,8 @@ export interface Agent {
   allowedSubAgents: string[];
   maxSteps: number;
   active: boolean;
+  model?: string | null;
+  provider?: string | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -551,11 +553,12 @@ export const api = {
   },
 
   playground: {
-    chat: (agentId: string, messages: { role: string; content: string }[]) =>
+    chat: (agentId: string, messages: { role: string; content: string }[], model?: string) =>
       fetchAPI<PlaygroundResponse>("/playground/chat", {
         method: "POST",
-        body: JSON.stringify({ agentId, messages }),
+        body: JSON.stringify({ agentId, messages, model: model || undefined }),
       }),
+    models: () => fetchAPI<LLMModel[]>("/playground/models"),
   },
 
   knowledge: {
@@ -620,7 +623,16 @@ export interface PlaygroundResponse {
   role: string;
   content: string;
   toolCalls: { name: string; arguments: string; id: string }[];
+  model?: string;
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+}
+
+export interface LLMModel {
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+  available: boolean;
 }
 
 export interface AnalyticsData {

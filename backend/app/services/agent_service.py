@@ -21,6 +21,8 @@ def _doc_to_response(doc: dict) -> AgentResponse:
         allowedSubAgents=doc.get("allowedSubAgents", []),
         maxSteps=doc.get("maxSteps", 10),
         active=doc.get("active", True),
+        model=doc.get("model"),
+        provider=doc.get("provider"),
         createdAt=doc.get("createdAt", datetime.now(timezone.utc)),
         updatedAt=doc.get("updatedAt"),
     )

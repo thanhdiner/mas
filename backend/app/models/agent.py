@@ -14,6 +14,9 @@ class AgentCreate(BaseModel):
     allowedSubAgents: list[str] = Field(default_factory=list)
     maxSteps: int = Field(default=10, ge=1, le=50)
     active: bool = Field(default=True)
+    # Multi-model support
+    model: Optional[str] = Field(default=None, description="LLM model override (e.g. gpt-4o, claude-sonnet-4-20250514)")
+    provider: Optional[str] = Field(default=None, description="LLM provider override (openai, anthropic, groq, together)")
 
 
 class AgentUpdate(BaseModel):
@@ -26,6 +29,8 @@ class AgentUpdate(BaseModel):
     allowedSubAgents: Optional[list[str]] = None
     maxSteps: Optional[int] = None
     active: Optional[bool] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
 
 
 class AgentResponse(BaseModel):
@@ -39,5 +44,7 @@ class AgentResponse(BaseModel):
     allowedSubAgents: list[str] = Field(default_factory=list)
     maxSteps: int
     active: bool
+    model: Optional[str] = None
+    provider: Optional[str] = None
     createdAt: datetime
     updatedAt: Optional[datetime] = None

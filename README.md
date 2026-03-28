@@ -2,8 +2,6 @@
 
 MAS is a powerful workflow and orchestration platform designed for managing autonomous AI agents. Unlike simple chatbots, MAS allows you to build a fleet of specialized agents that can collaborate, delegate subtasks, and solve complex problems through a recursive execution engine.
 
-![MAS Dashboard Preview](https://github.com/user-attachments/assets/PLACEHOLDER_FOR_IMAGE)
-
 ## 🚀 Core Idea
 
 MAS transforms individual LLMs into a structured organization. Users define agents with specific roles, system prompts, and toolsets. When a task is assigned, the "Assigned Agent" decides whether to handle it directly or delegate parts of it to other specialized sub-agents. The system tracks the entire delegation chain and provides real-time execution logs.
@@ -11,42 +9,57 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 ## ✨ Key Features
 
 - **Multi-Agent Orchestration**: Create agents with distinct roles, goals, and system prompts.
+- **Multi-Model AI Support**: Per-agent model selection across OpenAI (GPT-4o), Anthropic (Claude), Groq (Llama 3), and Together AI.
 - **Recursive Delegation**: Agents can dynamically create subtasks and assign them to other agents (with depth-limit safeguards).
+- **Distributed Task Queue**: Celery + Redis for horizontal scaling of agent workloads across multiple workers.
+- **Knowledge Base (RAG)**: Upload documents, auto-chunk & embed via ChromaDB, and enable agents to search with semantic vector similarity.
 - **Command Center**: Real-time dashboard showing system throughput, active runs, and agent performance.
-- **Real-time Monitoring**: Follow execution steps as they happen via WebSocket-streamed logs and timeline visualizations.
+- **Real-time Monitoring**: Follow execution steps via WebSocket-streamed logs with virtualized rendering and collapsible groups.
 - **Tonal Design System**: A "Synthetic Intelligence" UI featuring deep obsidian surfaces, glassmorphism, and neon functional accents.
 - **Robust Task States**: Full lifecycle tracking: `queued`, `running`, `waiting_approval`, `done`, `failed`, `cancelled`.
+- **Human-in-the-Loop**: Approval workflow for sensitive agent tasks.
+- **Webhooks & Schedules**: External trigger integration and automated scheduled executions.
+- **CI/CD Pipeline**: GitHub Actions for automated testing, linting, and Docker image builds.
 
 ## 🛠️ Tech Stack
 
 ### Backend
 - **Framework**: FastAPI (Python 3.12+)
 - **Database**: MongoDB (via Motor async driver)
-- **AI**: OpenAI GPT-4o-mini
-- **Task Queue**: FastAPI BackgroundTasks (extensible to Celery/RQ)
+- **Vector Store**: ChromaDB (semantic search for RAG)
+- **AI Providers**: OpenAI, Anthropic, Groq, Together AI
+- **Task Queue**: Celery + Redis (or FastAPI BackgroundTasks for development)
 - **Real-time**: WebSockets
+- **Scheduler**: APScheduler
 
 ### Frontend
 - **Framework**: Next.js 16 (App Router)
 - **Styling**: Tailwind CSS
 - **Components**: shadcn/ui + Lucide Icons
+- **Graph Viz**: React Flow (@xyflow/react)
 - **Typography**: Space Grotesk (Headlines) & Inter (Body)
 
 ## 📂 Project Structure
 
 ```bash
 mas/
+├── .github/workflows/      # CI/CD Pipeline
+│   ├── ci.yml              # Test, lint, build
+│   └── docker.yml          # Docker image builds
 ├── backend/                # FastAPI Application
 │   ├── app/
 │   │   ├── models/         # Pydantic Schemas (Agent, Task, Execution)
-│   │   ├── services/       # Orchestration & Business Logic
+│   │   ├── services/       # Orchestration, LLM Provider, Vector Store
 │   │   ├── routes/         # REST & WebSocket Endpoints
-│   │   └── worker/         # Task Runtime Engine
+│   │   ├── tools/          # Agent Tools (GitHub, Slack, Gmail, etc.)
+│   │   ├── utils/          # Task Dispatcher, WebSocket Manager
+│   │   └── worker/         # Celery Task Queue Workers
+│   ├── tests/              # Unit & Integration Tests
 │   └── Dockerfile
 ├── frontend/               # Next.js Application
 │   ├── src/
 │   │   ├── app/            # Pages & Routing
-│   │   ├── components/     # shadcn/ui + Modular Components
+│   │   ├── components/     # shadcn/ui + Execution Timeline + Graph
 │   │   └── lib/            # API Client (Typed)
 │   └── Dockerfile
 └── docker-compose.yml      # Full-stack Container Orchestration
@@ -58,41 +71,49 @@ mas/
 - Python 3.12+
 - Node.js 20+
 - MongoDB instance (localhost:27017 or Docker)
+- Redis (optional, for Celery task queue)
 
 ### 2. Backend Setup
 ```bash
-# Navigate to backend
 cd backend
-
-# Create and configure .env
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
-
-# Install dependencies
+# Edit .env: add OPENAI_API_KEY and optionally ANTHROPIC_API_KEY, GROQ_API_KEY
 pip install -r requirements.txt
-
-# Run server
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Frontend Setup
+### 3. Celery Worker (Optional — for distributed execution)
 ```bash
-# Navigate to frontend
+# In a separate terminal:
+celery -A app.worker.celery_app worker --loglevel=info --pool=solo
+# Set USE_CELERY=true in .env to enable
+```
+
+### 4. Frontend Setup
+```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to access the dashboard.
 
-### 4. Docker Setup (Alternative)
+### 5. Docker Setup (All-in-one)
 ```bash
-# From the root directory
 docker-compose up -d
 ```
+
+## 🧠 Multi-Model Support
+
+Each agent can be configured with a specific LLM model:
+
+| Provider | Models | Use Case |
+|----------|--------|----------|
+| **OpenAI** | GPT-4o, GPT-4o-mini, GPT-4.1 | General purpose, best tools support |
+| **Anthropic** | Claude Sonnet 4, Claude 3.5 Haiku | Excellent at coding and reasoning |
+| **Groq** | Llama 3.3 70B, Mixtral 8x7B | Ultra-fast inference |
+| **Together AI** | Llama 3.1, Mixtral | Open-source models |
+
+Set the model per-agent in the Agent Setup panel, or globally via `LLM_MODEL` in `.env`.
 
 ## 🛡️ Safeguards
 - **Delegation Depth**: Hard-coded limit (`MAX_DELEGATION_DEPTH=5`) to prevent infinite AI loops.
@@ -101,8 +122,8 @@ docker-compose up -d
 
 ## 🎨 Design Philosophy
 The UI follows the **"Synthetic Intelligence Interface"** strategy:
-- **No-Line Rule**: Boundaries are defined by tonal shifts (background colors) rather than 1px borders.
-- **Layering Principle**: Smokey glass effects and obsidian surfaces create a sense of professional, high-end "Editorial Authority."
+- **No-Line Rule**: Boundaries defined by tonal shifts rather than 1px borders.
+- **Layering Principle**: Smokey glass effects and obsidian surfaces create depth.
 - **Focus**: Asymmetric layouts guide the eye toward critical agent activity logs.
 
 ---

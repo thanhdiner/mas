@@ -82,6 +82,7 @@ export default function RootLayout({
       className={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head suppressHydrationWarning />
       <body className="min-h-full flex" suppressHydrationWarning>
         <AppLayoutWrapper>{children}</AppLayoutWrapper>
       </body>

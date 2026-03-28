@@ -10,12 +10,12 @@ Responsibilities:
   6. Finalize parent task
 
 Safety: tracks delegation depth to prevent infinite loops.
+Uses the unified LLM Provider for multi-model support.
 """
 
 import json
 import asyncio
 from typing import Optional
-from openai import AsyncOpenAI
 
 from app.config import get_settings
 from app.models.task import TaskStatus, TaskCreate
@@ -23,6 +23,7 @@ from app.models.execution import ExecutionStatus, StepType
 from app.services.agent_service import AgentService
 from app.services.task_service import TaskService
 from app.services.execution_service import ExecutionService
+from app.services.llm_provider import get_llm_provider
 from app.utils.websocket_manager import ws_manager
 from app.tools.registry import tool_registry
 
@@ -56,18 +57,23 @@ DELEGATION_TOOL = {
 
 
 class Orchestrator:
-    _openai_client: Optional[AsyncOpenAI] = None
 
     @staticmethod
-    def _get_openai_client() -> AsyncOpenAI:
-        api_key = (settings.OPENAI_API_KEY or "").strip()
-        if not api_key or api_key == "sk-your-openai-api-key-here":
-            raise RuntimeError("OPENAI_API_KEY is not configured")
+    def _get_agent_model(agent) -> tuple[str, Optional[str]]:
+        """
+        Resolve the model and provider for an agent.
+        Returns (model_name, provider_override_or_none).
+        
+        Priority: agent.model > settings.LLM_MODEL > settings.OPENAI_MODEL
+        """
+        agent_model = getattr(agent, "model", None)
+        agent_provider = getattr(agent, "provider", None)
 
-        if Orchestrator._openai_client is None:
-            Orchestrator._openai_client = AsyncOpenAI(api_key=api_key)
-
-        return Orchestrator._openai_client
+        if agent_model:
+            return agent_model, agent_provider
+        
+        # Fall back to global settings
+        return settings.LLM_MODEL or settings.OPENAI_MODEL, None
 
     @staticmethod
     async def execute_task(task_id: str, depth: int = 0):
@@ -132,8 +138,9 @@ class Orchestrator:
 
     @staticmethod
     async def _run_agent(task, agent, execution, depth: int):
-        """Run the LLM agent loop."""
-        openai_client = Orchestrator._get_openai_client()
+        """Run the LLM agent loop using the unified LLM provider."""
+        llm = get_llm_provider()
+        model, provider = Orchestrator._get_agent_model(agent)
 
         # Build system prompt
         system_msg = agent.systemPrompt + "\n\n"
@@ -167,14 +174,14 @@ class Orchestrator:
         await ExecutionService.add_step(
             execution.id, task.id, agent.id,
             StepType.THINKING,
-            f"Agent '{agent.name}' is analyzing the task...",
+            f"Agent '{agent.name}' is analyzing the task (model: {model})...",
         )
         await ws_manager.broadcast(execution.id, {
             "type": "step",
             "stepType": "thinking",
             "agentId": agent.id,
             "agentName": agent.name,
-            "content": f"Agent '{agent.name}' is analyzing the task...",
+            "content": f"Agent '{agent.name}' is analyzing the task (model: {model})...",
         })
 
         # Prepare tools — real tools from registry + delegation
@@ -190,42 +197,40 @@ class Orchestrator:
         while step_count < max_steps:
             step_count += 1
 
-            call_kwargs = {
-                "model": settings.OPENAI_MODEL,
-                "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 2000,
-            }
-            if tools:
-                call_kwargs["tools"] = tools
-                call_kwargs["tool_choice"] = "auto"
-
-            response = await openai_client.chat.completions.create(**call_kwargs)
-            choice = response.choices[0]
+            response = await llm.chat(
+                model=model,
+                messages=messages,
+                tools=tools if tools else None,
+                temperature=0.7,
+                max_tokens=2000,
+                provider=provider,
+            )
 
             # Check for tool calls (delegation OR real tools)
-            if choice.message.tool_calls:
+            if response.message.tool_calls:
+                # Build assistant message with tool_calls for the conversation history
+                tool_calls_for_msg = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.name,
+                            "arguments": tc.arguments,
+                        },
+                    }
+                    for tc in response.message.tool_calls
+                ]
                 messages.append({
                     "role": "assistant",
-                    "content": choice.message.content or "",
-                    "tool_calls": [
-                        {
-                            "id": tool_call.id,
-                            "type": "function",
-                            "function": {
-                                "name": tool_call.function.name,
-                                "arguments": tool_call.function.arguments,
-                            },
-                        }
-                        for tool_call in choice.message.tool_calls
-                    ],
+                    "content": response.message.content or "",
+                    "tool_calls": tool_calls_for_msg,
                 })
 
-                for tool_call in choice.message.tool_calls:
-                    fn_name = tool_call.function.name
+                for tc in response.message.tool_calls:
+                    fn_name = tc.name
 
                     try:
-                        args = json.loads(tool_call.function.arguments or "{}")
+                        args = json.loads(tc.arguments or "{}")
                     except json.JSONDecodeError as e:
                         tool_result = f"ERROR: Invalid tool arguments: {e.msg}"
                         await ExecutionService.add_step(
@@ -234,7 +239,7 @@ class Orchestrator:
                         )
                         messages.append({
                             "role": "tool",
-                            "tool_call_id": tool_call.id,
+                            "tool_call_id": tc.id,
                             "content": tool_result,
                         })
                         continue
@@ -269,16 +274,12 @@ class Orchestrator:
 
                             # Execute the real tool handler
                             try:
-                                # Fetch global config from DB
                                 from app.database import get_db
                                 current_db = get_db()
                                 global_settings_doc = await current_db.tool_settings.find_one({"name": fn_name}) if current_db is not None else {}
                                 global_settings = (global_settings_doc or {}).get("settings", {})
 
-                                # Inject configuration from Agent's toolConfig (acts as default/overrides)
                                 agent_tool_config = getattr(agent, "toolConfig", {}).get(fn_name, {})
-                                
-                                # Merge order: Global Config -> Agent Config -> LLM args
                                 combined_args = {**global_settings, **agent_tool_config, **args}
                                 tool_result = await handler(**combined_args)
                             except Exception as exc:
@@ -302,13 +303,13 @@ class Orchestrator:
 
                     messages.append({
                         "role": "tool",
-                        "tool_call_id": tool_call.id,
+                        "tool_call_id": tc.id,
                         "content": tool_result or "Tool completed but returned no result.",
                     })
                 continue
 
             # Final answer
-            content = choice.message.content or ""
+            content = response.message.content or ""
 
             await ExecutionService.add_step(
                 execution.id, task.id, agent.id,

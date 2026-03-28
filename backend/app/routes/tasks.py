@@ -11,8 +11,8 @@ from app.models.task import (
     TaskUpdate,
 )
 from app.services.agent_service import AgentService
-from app.services.orchestrator import Orchestrator
 from app.services.task_service import TaskService
+from app.utils.task_dispatcher import dispatch_task_execution
 from app.utils.object_id import validate_object_id
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -92,7 +92,7 @@ async def execute_task(task_id: str, background_tasks: BackgroundTasks):
             f"Task cannot be executed in '{task.status}' status",
         )
 
-    background_tasks.add_task(Orchestrator.execute_task, task_id)
+    await dispatch_task_execution(task_id, background_tasks=background_tasks)
     return {"message": "Task execution started", "taskId": task_id}
 
 
