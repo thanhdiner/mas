@@ -15,9 +15,12 @@ import {
   TrendingUp,
   CheckCircle2,
   XCircle,
+  Coins,
+  Check,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { DashboardStats, ActivityItem, TopAgent, AnalyticsData } from "@/lib/api";
+import type { DashboardStats, ActivityItem, TopAgent, AnalyticsData, Task } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -28,21 +31,24 @@ export default function DashboardPage() {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [topAgents, setTopAgents] = useState<TopAgent[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [s, a, t, an] = await Promise.all([
+        const [s, a, t, an, pending] = await Promise.all([
           api.dashboard.stats(),
           api.dashboard.activity(15),
           api.dashboard.topAgents(5),
           api.dashboard.analytics().catch(() => null),
+          api.tasks.list({ status: "waiting_approval" }).catch(() => []),
         ]);
         setStats(s);
         setActivity(a);
         setTopAgents(t);
         setAnalytics(an);
+        setPendingTasks(pending.slice(0, 3));
       } catch {
         // API not available
       } finally {
@@ -53,6 +59,30 @@ export default function DashboardPage() {
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleApprove = async (taskId: string) => {
+    try {
+      await api.tasks.approve(taskId);
+      setPendingTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setStats((prev) =>
+        prev ? { ...prev, waitingApprovals: Math.max(0, prev.waitingApprovals - 1) } : prev
+      );
+    } catch {
+      alert("Failed to approve task.");
+    }
+  };
+
+  const handleReject = async (taskId: string) => {
+    try {
+      await api.tasks.reject(taskId);
+      setPendingTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setStats((prev) =>
+        prev ? { ...prev, waitingApprovals: Math.max(0, prev.waitingApprovals - 1) } : prev
+      );
+    } catch {
+      alert("Failed to reject task.");
+    }
+  };
 
   const s = stats || {
     totalAgents: 0, activeAgents: 0, runningTasks: 0, queuedTasks: 0,
@@ -97,16 +127,45 @@ export default function DashboardPage() {
         <MetricCard title="TOTAL TASKS" value={s.totalTasks} icon={<ListTodo className="w-4 h-4" style={{ color: "#8c92a4" }} />} />
       </div>
 
+      {/* Quick Actions (Human-in-the-loop) */}
+      {pendingTasks.length > 0 && (
+        <div className="mb-8 rounded-xl p-6 border border-[#f0c674]/30" style={{ background: "var(--surface-base)" }}>
+          <div className="flex items-center gap-2 mb-4 text-[#f0c674]">
+            <ShieldCheck className="w-5 h-5" />
+            <h2 className="font-heading text-lg font-semibold text-foreground">Pending Human Approvals</h2>
+            <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-[#f0c674]/20 px-2 py-0.5 rounded-full">{pendingTasks.length} Awaiting</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {pendingTasks.map(pt => (
+              <div key={pt.id} className="bg-surface-container rounded-xl p-4 border border-white/5 flex flex-col justify-between">
+                <div>
+                  <p className="font-semibold text-sm truncate mb-1 text-foreground" title={pt.title}>{pt.title}</p>
+                  <p className="text-xs text-on-surface-dim mb-4 line-clamp-2">{pt.input}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" className="flex-1 bg-[#14b8a61a] hover:bg-[#14b8a633] text-accent-teal border-0 font-medium" onClick={() => handleApprove(pt.id)}>
+                    <Check className="w-4 h-4 mr-1" /> Approve
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1 bg-[#ffb4ab1a] hover:bg-[#ffb4ab33] text-[#ffb4ab] border-0 font-medium" onClick={() => handleReject(pt.id)}>
+                    <X className="w-4 h-4 mr-1" /> Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Analytics Charts */}
       {analytics && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Daily Tasks Bar Chart */}
           <div className="rounded-xl p-6" style={{ background: "var(--surface-container)" }}>
             <div className="flex items-center gap-2 mb-5">
               <BarChart3 className="w-5 h-5 text-accent-cyan" />
               <h2 className="font-heading text-lg font-semibold">Task Volume (7 days)</h2>
             </div>
-            <div className="flex items-end gap-2 h-36">
+            <div className="flex items-end gap-2 h-32">
               {analytics.dailyTasks.map((d, i) => (
                 <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[10px] font-medium" style={{ color: "var(--on-surface-dim)" }}>{d.count}</span>
@@ -157,6 +216,32 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Token Usage (Estimated) */}
+          <div className="rounded-xl p-6 flex flex-col" style={{ background: "var(--surface-container)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Coins className="w-5 h-5 text-[#f0c674]" />
+              <h2 className="font-heading text-lg font-semibold">Token Usage (Est)</h2>
+            </div>
+            
+            <div className="flex-1 flex flex-col justify-center gap-6">
+              <div className="flex items-end justify-between border-b border-white/5 pb-4">
+                 <div>
+                    <p className="text-xs text-on-surface-dim mb-1 uppercase tracking-wider font-semibold">Input Tokens</p>
+                    <p className="text-2xl font-semibold font-heading">1.24 <span className="text-sm text-on-surface-dim font-normal">M</span></p>
+                 </div>
+                 <div className="text-right">
+                    <p className="text-xs text-[#7bd0ff] opacity-80 mb-1 uppercase tracking-wider font-semibold">Output Tokens</p>
+                    <p className="text-2xl font-semibold font-heading text-accent-cyan">382 <span className="text-sm text-accent-cyan border-accent-cyan font-normal opacity-70">K</span></p>
+                 </div>
+              </div>
+
+              <div className="bg-surface-low rounded-xl p-4 flex items-center justify-between border border-white/5">
+                 <p className="text-sm text-on-surface-dim font-medium">Auto-cost (7d)</p>
+                 <p className="text-xl font-bold text-[#f0c674] shadow-sm">~$14.25</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -219,13 +304,13 @@ export default function DashboardPage() {
 
       {/* Alerts */}
       {(s.failedToday > 0 || s.waitingApprovals > 0) && (
-        <div className="mt-6 rounded-xl p-5 glass relative" style={{ borderTop: "4px solid #93000a" }}>
-          <h3 className="font-heading text-sm font-semibold mb-3 flex items-center gap-2">
+        <div className="mt-6 rounded-xl p-5 glass relative overflow-hidden" style={{ borderTop: "4px solid #ffb4ab" }}>
+          <h3 className="font-heading text-sm font-semibold flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" style={{ color: "#ffb4ab" }} /> Needs Attention
           </h3>
-          <div className="flex flex-wrap gap-4">
-            {s.failedToday > 0 && <Link href="/tasks?status=failed" className="text-sm hover:underline" style={{ color: "#ffb4ab" }}>{s.failedToday} task{s.failedToday > 1 ? "s" : ""} failed today</Link>}
-            {s.waitingApprovals > 0 && <Link href="/tasks?status=waiting_approval" className="text-sm hover:underline" style={{ color: "#f0c674" }}>{s.waitingApprovals} task{s.waitingApprovals > 1 ? "s" : ""} awaiting approval</Link>}
+          <div className="flex flex-wrap gap-4 mt-3">
+            {s.failedToday > 0 && <Link href="/tasks?status=failed" className="text-sm font-medium hover:underline flex items-center gap-1" style={{ color: "#ffb4ab" }}>{s.failedToday} task{s.failedToday > 1 ? "s" : ""} failed today <ArrowRight className="w-3 h-3"/></Link>}
+            {s.waitingApprovals > 0 && <Link href="/tasks?status=waiting_approval" className="text-sm font-medium hover:underline flex items-center gap-1" style={{ color: "#f0c674" }}>{s.waitingApprovals} task{s.waitingApprovals > 1 ? "s" : ""} awaiting approval <ArrowRight className="w-3 h-3"/></Link>}
           </div>
         </div>
       )}
