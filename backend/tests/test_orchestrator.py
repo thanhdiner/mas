@@ -235,9 +235,10 @@ class TestAgentModelSelection:
         mock_agent.model = None
         mock_agent.provider = None
 
-        mock_get_llm.return_value = AsyncMock()
-        mock_get_llm.return_value.defaultModel = "gpt-5.4-mini"
-        mock_get_llm.return_value.defaultProvider = "openai"
+        mock_get_llm.return_value = {
+            "default_model": "gpt-5.4-mini",
+            "default_provider": "openai"
+        }
 
         from app.services.orchestrator import Orchestrator
         model, provider = await Orchestrator._get_agent_model(mock_agent)
