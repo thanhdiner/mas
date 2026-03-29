@@ -9,7 +9,7 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 ## ✨ Key Features
 
 - **Multi-Agent Orchestration**: Create agents with distinct roles, goals, and system prompts.
-- **Multi-Model AI Support**: 2026-Ready per-agent model selection across OpenAI (GPT-5.4), Anthropic (Claude 4.6), Groq (Grok 4), and Together AI (Llama 4).
+- **Multi-Model AI Support**: 2026-Ready per-agent model selection across OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, and Together AI.
 - **Recursive Delegation**: Agents can dynamically create subtasks and assign them to other agents (with depth-limit safeguards).
 - **Extreme Performance**: Ultra-fast PyTest suite (~0.7s), optimized MongoDB indexing, and stable CI/CD pipelines.
 - **Distributed Task Queue**: Celery + Redis for horizontal scaling of agent workloads across multiple workers.
@@ -18,7 +18,7 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 - **Real-time Monitoring**: Follow execution steps via WebSocket-streamed logs with virtualized rendering and collapsible groups.
 - **Tonal Design System**: A "Synthetic Intelligence" UI featuring deep obsidian surfaces, glassmorphism, and neon functional accents.
 - **Robust Task States**: Full lifecycle tracking: `queued`, `running`, `waiting_approval`, `done`, `failed`, `cancelled`.
-- **Human-in-the-Loop**: Approval workflow for sensitive agent tasks.
+- **Human-in-the-Loop**: Approval workflow for sensitive agent tasks, with native inline 1-click Approve/Reject controls directly on the Execution UI.
 - **Webhooks & Schedules**: External trigger integration and automated scheduled executions.
 - **CI/CD Pipeline**: GitHub Actions for automated testing, linting, and Docker image builds.
 
@@ -111,10 +111,12 @@ Each agent can be configured with a specific LLM model powered by top 2026 infer
 |----------|--------|----------|
 | **OpenAI** | GPT-5.4, GPT-5.4 Mini, O4 Preview | General purpose, best tools support |
 | **Anthropic** | Claude Sonnet 4.6, Claude Opus 4.6 | Excellent at coding and reasoning |
-| **Groq (xAI)** | Grok 4.20, Grok 4.1 Fast, Grok Code | Ultra-fast Grok inference |
-| **Together AI** | Llama 4 Scout, Llama 4 Maverick | Advanced open-source models |
+| **Google Gemini** | Gemini 3.1 Pro, Gemini 2.5 Flash, Deep Research | Deep reasoning and massive context windows |
+| **DeepSeek** | DeepSeek V3 (Chat), DeepSeek R1 (Reasoner) | High-performance open-source models |
+| **Groq** | Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B | Ultra-fast LPU inference engines |
+| **Together AI** | Llama 3.1 405B, Qwen 2.5 | Advanced open weights models |
 
-Set the model per-agent in the Agent Setup panel, or globally via `LLM_MODEL` in `.env`.
+Set the model per-agent in the Agent Setup panel, or globally via the GUI Settings Dashboard.
 
 ## 🛡️ Safeguards
 - **Delegation Depth**: Hard-coded limit (`MAX_DELEGATION_DEPTH=5`) to prevent infinite AI loops.
