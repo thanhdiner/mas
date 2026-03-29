@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   BookOpen,
   Webhook as WebhookIcon,
+  Settings,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -219,10 +220,28 @@ export function Sidebar() {
         {!collapsed && (
           <div className="pt-6 pb-2 px-3 hidden lg:block">
             <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-dim/40">
-              Account
+              System
             </span>
           </div>
         )}
+
+        {/* Settings Link */}
+        <Link
+          href="/settings"
+          className={`relative group flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
+            pathname === "/settings"
+              ? "text-accent-cyan bg-surface-high shadow-sm"
+              : "text-on-surface-dim hover:text-foreground hover:bg-surface-container"
+          }`}
+        >
+          <Settings className="w-5 h-5 shrink-0" />
+          <span className={`text-sm font-medium hidden ${collapsed ? "" : "lg:block"}`}>
+            Settings
+          </span>
+          {pathname === "/settings" && (
+            <div className="absolute left-0 w-[3px] h-6 bg-accent-cyan rounded-r-full" />
+          )}
+        </Link>
 
         {/* Profile Link */}
         <Link

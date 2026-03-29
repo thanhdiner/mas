@@ -162,6 +162,10 @@ class TaskService:
         if error is not None:
             update["error"] = error
 
+        # Automatically clear errors if we are running successfully or finished successfully.
+        if status in (TaskStatus.RUNNING, TaskStatus.DONE, TaskStatus.QUEUED):
+            update["error"] = None
+
         await db.tasks.update_one(
             {"_id": to_object_id(task_id, "task_id")},
             {"$set": update},

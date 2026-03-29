@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # Together AI
     TOGETHER_API_KEY: str = ""
 
+    # Google Gemini
+    GEMINI_API_KEY: str = ""
+
+    # DeepSeek
+    DEEPSEEK_API_KEY: str = ""
+
     # ChromaDB
     CHROMADB_PATH: str = "./chroma_data"
 

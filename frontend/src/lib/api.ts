@@ -569,6 +569,21 @@ export const api = {
     delete: (id: string) => fetchAPI<{ message: string }>(`/knowledge/${id}`, { method: "DELETE" }),
     search: (q: string) => fetchAPI<{ id: string; name: string; snippet: string }[]>(`/knowledge/search/query?q=${encodeURIComponent(q)}`),
   },
+
+  settings: {
+    getLLM: () => fetchAPI<LLMSettings>("/settings/llm"),
+    updateLLM: (data: LLMSettingsUpdate) =>
+      fetchAPI<LLMSettings>("/settings/llm", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    getGeneral: () => fetchAPI<GeneralSettings>("/settings/general"),
+    updateGeneral: (data: GeneralSettingsUpdate) =>
+      fetchAPI<GeneralSettings>("/settings/general", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+  },
 };
 
 // ─── Schedule Types ──────────────────────────────────────────────────
@@ -642,6 +657,48 @@ export interface KnowledgeDoc {
   fileType: string;
   tags: string[];
   uploadedAt: string;
+}
+
+// ─── Settings Types ──────────────────────────────────────────────────
+
+export interface LLMSettings {
+  default_provider: string;
+  default_model: string;
+  openai_api_key_set: boolean;
+  anthropic_api_key_set: boolean;
+  gemini_api_key_set: boolean;
+  deepseek_api_key_set: boolean;
+  groq_api_key_set: boolean;
+  together_api_key_set: boolean;
+  openai_api_key_hint: string;
+  anthropic_api_key_hint: string;
+  gemini_api_key_hint: string;
+  deepseek_api_key_hint: string;
+  groq_api_key_hint: string;
+  together_api_key_hint: string;
+}
+
+export interface LLMSettingsUpdate {
+  default_provider?: string | null;
+  default_model?: string | null;
+  openai_api_key?: string | null;
+  anthropic_api_key?: string | null;
+  gemini_api_key?: string | null;
+  deepseek_api_key?: string | null;
+  groq_api_key?: string | null;
+  together_api_key?: string | null;
+}
+
+export interface GeneralSettings {
+  app_name: string;
+  max_delegation_depth: number;
+  max_steps_default: number;
+}
+
+export interface GeneralSettingsUpdate {
+  app_name?: string | null;
+  max_delegation_depth?: number | null;
+  max_steps_default?: number | null;
 }
 
 export interface ToolConfigField {

@@ -9,6 +9,7 @@ from app.routes.webhooks import router as webhooks_router
 from app.routes.schedules import router as schedules_router
 from app.routes.playground import router as playground_router
 from app.routes.knowledge import router as knowledge_router
+from app.routes.settings import router as settings_router
 
 __all__ = [
     "agents_router",
@@ -22,4 +23,5 @@ __all__ = [
     "schedules_router",
     "playground_router",
     "knowledge_router",
+    "settings_router",
 ]

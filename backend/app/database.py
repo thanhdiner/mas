@@ -40,6 +40,7 @@ async def connect_db():
     await db.webhook_runtime_state.create_index("type", unique=True)
     await db.schedules.create_index("isActive")
     await db.knowledge.create_index("name")
+    await db.system_settings.create_index("type", unique=True)
 
     print(f"Connected to MongoDB: {settings.MONGODB_DB}")
 

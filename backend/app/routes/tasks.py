@@ -122,6 +122,13 @@ async def approve_task(task_id: ValidObjectId):
 
     await TaskService.update_task_status(task_id, TaskStatus.DONE)
 
+    # Complete the execution object if it exists
+    from app.services.execution_service import ExecutionService
+    from app.models.execution import ExecutionStatus
+    exec_obj = await ExecutionService.get_execution_by_task(task_id)
+    if exec_obj and exec_obj.status == ExecutionStatus.RUNNING.value:
+        await ExecutionService.complete_execution(exec_obj.id, ExecutionStatus.COMPLETED)
+
     # Log the approval
     from app.database import get_db
     from datetime import datetime, timezone
@@ -150,6 +157,12 @@ async def reject_task(task_id: ValidObjectId, background_tasks: BackgroundTasks)
     await TaskService.update_task_status(
         task_id, TaskStatus.FAILED, error="Rejected by human reviewer"
     )
+
+    from app.services.execution_service import ExecutionService
+    from app.models.execution import ExecutionStatus
+    exec_obj = await ExecutionService.get_execution_by_task(task_id)
+    if exec_obj and exec_obj.status == ExecutionStatus.RUNNING.value:
+        await ExecutionService.complete_execution(exec_obj.id, ExecutionStatus.FAILED)
 
     from app.database import get_db
     from datetime import datetime, timezone

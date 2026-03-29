@@ -149,6 +149,24 @@ export default function TaskDetailPage() {
     }
   };
 
+  const handleApprove = async () => {
+    try {
+      await api.tasks.approve(taskId);
+      await loadData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await api.tasks.reject(taskId);
+      await loadData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   if (loading) {
     return (
       <div
@@ -203,6 +221,25 @@ export default function TaskDetailPage() {
         actions={
           <div className="flex items-center gap-3">
             <StatusBadge status={task.status} />
+            {task.status === "waiting_approval" && (
+              <>
+                <Button
+                  onClick={handleApprove}
+                  className="bg-accent-teal text-[#060e20] font-medium border-0 hover:opacity-90"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Approve
+                </Button>
+                <Button
+                  onClick={handleReject}
+                  variant="secondary"
+                  className="bg-[#ffb4ab] text-[#93000a] font-medium border-0 hover:opacity-90"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Reject
+                </Button>
+              </>
+            )}
             {canExecute && (
               <Button
                 onClick={handleExecute}
@@ -254,7 +291,7 @@ export default function TaskDetailPage() {
               Task Input
             </h3>
             <div
-              className="rounded-lg p-4 text-sm font-mono whitespace-pre-wrap"
+              className="rounded-lg p-4 text-sm font-mono whitespace-pre-wrap break-all break-words overflow-x-auto"
               style={{ background: "var(--surface-lowest)" }}
             >
               {task.input}
@@ -288,7 +325,7 @@ export default function TaskDetailPage() {
                 Final Result
               </h3>
               <div
-                className="rounded-lg p-4 text-sm whitespace-pre-wrap"
+                className="rounded-lg p-4 text-sm whitespace-pre-wrap break-all break-words overflow-x-auto"
                 style={{ background: "var(--surface-lowest)" }}
               >
                 {task.result}
@@ -313,7 +350,7 @@ export default function TaskDetailPage() {
                 Error
               </h3>
               <div
-                className="rounded-lg p-4 text-sm whitespace-pre-wrap"
+                className="rounded-lg p-4 text-sm whitespace-pre-wrap break-all break-words overflow-x-auto"
                 style={{ background: "var(--surface-lowest)" }}
               >
                 {task.error}

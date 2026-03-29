@@ -83,18 +83,28 @@ async def chat(req: PlaygroundRequest):
 @router.get("/models")
 async def list_models():
     """List all available LLM models for the playground."""
-    # Check which providers have API keys configured
+    # Check which providers have API keys configured (DB or .env)
+    from app.services.system_settings_service import get_effective_api_key
+
+    provider_keys = {}
+    for provider in ["openai", "anthropic", "gemini", "deepseek", "groq", "together"]:
+        try:
+            key = await get_effective_api_key(provider)
+            provider_keys[provider] = bool(key)
+        except Exception:
+            # Fallback to .env only
+            env_map = {
+                "openai": settings.OPENAI_API_KEY,
+                "anthropic": settings.ANTHROPIC_API_KEY,
+                "gemini": settings.GEMINI_API_KEY,
+                "deepseek": settings.DEEPSEEK_API_KEY,
+                "groq": settings.GROQ_API_KEY,
+                "together": settings.TOGETHER_API_KEY,
+            }
+            provider_keys[provider] = bool(env_map.get(provider, ""))
+
     available = []
     for m in AVAILABLE_MODELS:
-        provider = m["provider"]
-        has_key = False
-        if provider == "openai" and settings.OPENAI_API_KEY:
-            has_key = True
-        elif provider == "anthropic" and settings.ANTHROPIC_API_KEY:
-            has_key = True
-        elif provider == "groq" and settings.GROQ_API_KEY:
-            has_key = True
-        elif provider == "together" and settings.TOGETHER_API_KEY:
-            has_key = True
+        has_key = provider_keys.get(m["provider"], False)
         available.append({**m, "available": has_key})
     return available

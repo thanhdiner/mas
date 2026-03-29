@@ -58,12 +58,12 @@ DELEGATION_TOOL = {
 class Orchestrator:
 
     @staticmethod
-    def _get_agent_model(agent) -> tuple[str, Optional[str]]:
+    async def _get_agent_model(agent) -> tuple[str, str]:
         """
         Resolve the model and provider for an agent.
-        Returns (model_name, provider_override_or_none).
+        Returns (model_name, provider_override).
         
-        Priority: agent.model > settings.LLM_MODEL > settings.OPENAI_MODEL
+        Priority: agent.model > DB system_settings default > settings.LLM_MODEL
         """
         agent_model = getattr(agent, "model", None)
         agent_provider = getattr(agent, "provider", None)
@@ -71,8 +71,11 @@ class Orchestrator:
         if agent_model:
             return agent_model, agent_provider
         
-        # Fall back to global settings
-        return settings.LLM_MODEL or settings.OPENAI_MODEL, None
+        # Fall back to global DB settings
+        from app.services.system_settings_service import SystemSettingsService
+        sys_llm = await SystemSettingsService.get_llm_settings()
+        
+        return sys_llm["default_model"], sys_llm["default_provider"]
 
     @staticmethod
     async def execute_task(task_id: str, depth: int = 0):
@@ -139,7 +142,7 @@ class Orchestrator:
     async def _run_agent(task, agent, execution, depth: int):
         """Run the LLM agent loop using the unified LLM provider."""
         llm = get_llm_provider()
-        model, provider = Orchestrator._get_agent_model(agent)
+        model, provider = await Orchestrator._get_agent_model(agent)
 
         # Build system prompt
         system_msg = agent.systemPrompt + "\n\n"

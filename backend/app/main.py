@@ -18,6 +18,7 @@ from app.routes import (
     schedules_router,
     playground_router,
     knowledge_router,
+    settings_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.services.vector_store import init_vector_store
@@ -63,6 +64,7 @@ app.include_router(webhooks_router, prefix=settings.API_PREFIX)
 app.include_router(schedules_router, prefix=settings.API_PREFIX)
 app.include_router(playground_router, prefix=settings.API_PREFIX)
 app.include_router(knowledge_router, prefix=settings.API_PREFIX)
+app.include_router(settings_router, prefix=settings.API_PREFIX)
 app.include_router(ws_router)
 
 

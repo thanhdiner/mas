@@ -291,7 +291,7 @@ function StepItem({ step, index }: { step: ExecutionStep; index: number }) {
           </span>
         </div>
         <div
-          className="text-sm whitespace-pre-wrap rounded-lg p-3 relative"
+          className="text-sm whitespace-pre-wrap break-all break-words overflow-x-auto rounded-lg p-3 relative"
           style={{ background: "var(--surface-lowest)" }}
         >
           {isLong && !expanded ? (
