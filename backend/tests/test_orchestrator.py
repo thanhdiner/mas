@@ -216,28 +216,34 @@ class TestTaskStatusTransitions:
 class TestAgentModelSelection:
     """Test that per-agent model selection works correctly."""
 
-    def test_agent_with_model_override(self, mock_agent, mock_settings):
+    @pytest.mark.asyncio
+    async def test_agent_with_model_override(self, mock_agent, mock_settings):
         """Agent with custom model should use that model."""
         mock_agent.model = "claude-sonnet-4-20250514"
         mock_agent.provider = "anthropic"
 
         from app.services.orchestrator import Orchestrator
-        model, provider = Orchestrator._get_agent_model(mock_agent)
+        model, provider = await Orchestrator._get_agent_model(mock_agent)
 
         assert model == "claude-sonnet-4-20250514"
         assert provider == "anthropic"
 
-    def test_agent_without_model_uses_default(self, mock_agent, mock_settings):
+    @pytest.mark.asyncio
+    @patch("app.services.system_settings_service.SystemSettingsService.get_llm_settings")
+    async def test_agent_without_model_uses_default(self, mock_get_llm, mock_agent, mock_settings):
         """Agent without model should use global settings."""
         mock_agent.model = None
         mock_agent.provider = None
 
-        with patch("app.services.orchestrator.settings", mock_settings):
-            from app.services.orchestrator import Orchestrator
-            model, provider = Orchestrator._get_agent_model(mock_agent)
+        mock_get_llm.return_value = AsyncMock()
+        mock_get_llm.return_value.defaultModel = "gpt-5.4-mini"
+        mock_get_llm.return_value.defaultProvider = "openai"
+
+        from app.services.orchestrator import Orchestrator
+        model, provider = await Orchestrator._get_agent_model(mock_agent)
 
         assert model == "gpt-5.4-mini"
-        assert provider is None
+        assert provider == "openai"
 
 
 # ─── Delegation Handler Tests ────────────────────────────────────────────
