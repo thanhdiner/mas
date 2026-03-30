@@ -64,8 +64,6 @@ function formatNextRun(dateStr?: string | null) {
   if (diffMs < 0) return "Running soon...";
   
   const totalSeconds = Math.floor(diffMs / 1000);
-  if (totalSeconds < 60) return `in ${totalSeconds}s`;
-  
   const secs = totalSeconds % 60;
   const mins = Math.floor(totalSeconds / 60) % 60;
   const hours = Math.floor(totalSeconds / 3600);
@@ -75,10 +73,14 @@ function formatNextRun(dateStr?: string | null) {
   }
   
   if (hours > 0) {
-    return `in ${hours}h ${mins}m`;
+    return `in ${hours}h ${mins}m ${secs}s`;
   }
   
-  return `in ${mins}m ${secs}s`;
+  if (mins > 0) {
+    return `in ${mins}m ${secs}s`;
+  }
+  
+  return `in ${secs}s`;
 }
 
 function formatLastRun(dateStr?: string | null) {
