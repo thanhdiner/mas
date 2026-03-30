@@ -60,11 +60,25 @@ function formatNextRun(dateStr?: string | null) {
   const d = new Date(dateStr);
   const now = new Date();
   const diffMs = d.getTime() - now.getTime();
-  if (diffMs < 0) return "Past";
-  if (diffMs < 60000) return `in ${Math.round(diffMs / 1000)}s`;
-  if (diffMs < 3600000) return `in ${Math.round(diffMs / 60000)}m`;
-  if (diffMs < 86400000) return `in ${Math.round(diffMs / 3600000)}h`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  
+  if (diffMs < 0) return "Running soon...";
+  
+  const totalSeconds = Math.floor(diffMs / 1000);
+  if (totalSeconds < 60) return `in ${totalSeconds}s`;
+  
+  const secs = totalSeconds % 60;
+  const mins = Math.floor(totalSeconds / 60) % 60;
+  const hours = Math.floor(totalSeconds / 3600);
+  
+  if (hours > 24) {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  
+  if (hours > 0) {
+    return `in ${hours}h ${mins}m`;
+  }
+  
+  return `in ${mins}m ${secs}s`;
 }
 
 function formatLastRun(dateStr?: string | null) {
