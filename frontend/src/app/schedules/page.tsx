@@ -73,11 +73,11 @@ function formatNextRunStr(dateStr?: string | null, forceNowMs?: number) {
   }
   
   if (hours > 0) {
-    return `in ${hours}h ${mins}m ${secs}s`;
+    return `in ${hours}h ${mins}m`;
   }
   
   if (mins > 0) {
-    return `in ${mins}m ${secs}s`;
+    return `in ${mins}m`;
   }
   
   return `in ${secs}s`;
