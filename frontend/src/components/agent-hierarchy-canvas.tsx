@@ -115,7 +115,7 @@ export function AgentHierarchyCanvas() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-0 xl:grid-cols-[1fr_300px]">
+        <div className="grid gap-0 xl:grid-cols-[1fr_300px] overflow-hidden">
           {/* ---- Canvas ---- */}
           <div
             className="rounded-l-2xl xl:rounded-r-none rounded-r-2xl xl:border-r-0 border border-white/5 overflow-hidden"
@@ -258,7 +258,7 @@ export function AgentHierarchyCanvas() {
 
           {/* ---- Sidebar Inspector ---- */}
           <div
-            className="rounded-r-2xl border border-l-0 border-white/5 flex flex-col overflow-hidden"
+            className="rounded-r-2xl border border-l-0 border-white/5 flex flex-col overflow-hidden min-w-0"
             style={{ background: "#1f222c", height: "calc(100vh - 190px)", minHeight: "560px" }}
           >
             {!graph.selectedAgent ? (

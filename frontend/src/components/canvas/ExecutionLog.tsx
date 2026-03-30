@@ -47,11 +47,11 @@ export function ExecutionLog({
           >Clear</button>
         </div>
       </div>
-      <div className="max-h-[200px] overflow-y-auto px-4 py-2 space-y-1 font-mono">
+      <div className="max-h-[200px] overflow-y-auto overflow-x-hidden px-4 py-2 space-y-1 font-mono">
         {execLog.map((log, i) => (
-          <div key={i} className="flex items-start gap-2 text-[11px] leading-relaxed">
+          <div key={i} className="flex items-start gap-2 text-[11px] leading-relaxed min-w-0">
             <span className="shrink-0 w-[60px]" style={{ color: "rgba(232,234,237,0.25)" }}>{log.time}</span>
-            <span style={{
+            <span className="break-all" style={{
               color: log.type === "error" ? "#ffb4ab"
                 : log.type === "done" ? "#4edea3"
                 : log.type === "delegation" ? "#7bd0ff"
