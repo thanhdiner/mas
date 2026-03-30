@@ -13,11 +13,61 @@ Supports (via LiteLLM):
 
 import logging
 import os
+import re
 from typing import Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
 logger = logging.getLogger("llm_provider")
+
+
+def _try_recover_groq_tool_use_failed(error: Exception) -> Optional["LLMResponse"]:
+    """
+    Groq/Llama sometimes generates tool calls in XML format like:
+        <function=gmail>{"action":"send_email",...}</function>
+    instead of the proper JSON tool_call format. Groq rejects this with
+    a 'tool_use_failed' error but includes the intended call in
+    'failed_generation'. We parse it out and build a valid LLMResponse.
+    """
+    error_str = str(error)
+    if "tool_use_failed" not in error_str or "failed_generation" not in error_str:
+        return None
+
+    try:
+        # Extract the failed_generation content
+        # Pattern: <function=TOOL_NAME>{...JSON...}</function>
+        match = re.search(
+            r'<function=(\w+)>\s*(\{.*?\})\s*</function>',
+            error_str,
+            re.DOTALL,
+        )
+        if not match:
+            return None
+
+        tool_name = match.group(1)
+        import json
+        tool_args = json.loads(match.group(2))
+
+        logger.warning(
+            f"Recovered tool call from Groq failed_generation: {tool_name}({list(tool_args.keys())})"
+        )
+
+        return LLMResponse(
+            message=LLMMessage(
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id=f"recovered_{tool_name}",
+                        name=tool_name,
+                        arguments=json.dumps(tool_args, ensure_ascii=False),
+                    )
+                ],
+                finish_reason="tool_calls",
+            ),
+        )
+    except Exception as parse_err:
+        logger.warning(f"Failed to recover Groq tool_use_failed: {parse_err}")
+        return None
 
 
 class LLMProviderType(str, Enum):
@@ -213,6 +263,12 @@ class LLMProvider:
         try:
             response = await litellm.acompletion(**kwargs)
         except Exception as e:
+            # Attempt to recover from Groq's tool_use_failed error
+            recovered = _try_recover_groq_tool_use_failed(e)
+            if recovered:
+                logger.info("Successfully recovered tool call from Groq failed_generation")
+                return recovered
+
             logger.error(f"LiteLLM error for {litellm_model}: {e}")
             raise RuntimeError(
                 f"LLM call failed ({provider_type.value}/{model}): {e}"
