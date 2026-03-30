@@ -28,28 +28,45 @@ def _try_recover_groq_tool_use_failed(error: Exception) -> Optional["LLMResponse
     instead of the proper JSON tool_call format. Groq rejects this with
     a 'tool_use_failed' error but includes the intended call in
     'failed_generation'. We parse it out and build a valid LLMResponse.
+
+    Also handles the case where Llama passes empty strings for integer
+    fields (e.g. max_results=""), which fails schema validation.
     """
     error_str = str(error)
     if "tool_use_failed" not in error_str or "failed_generation" not in error_str:
         return None
 
     try:
-        # Extract the failed_generation content
+        import json
+
+        # Decode JSON unicode escapes: \u003c → <, \u003e → >
+        decoded = error_str.replace("\\u003c", "<").replace("\\u003e", ">")
+
         # Pattern: <function=TOOL_NAME>{...JSON...}</function>
+        # Use greedy match between tags to capture full JSON
         match = re.search(
-            r'<function=(\w+)>\s*(\{.*?\})\s*</function>',
-            error_str,
+            r'<function=(\w+)>(.*?)</function>',
+            decoded,
             re.DOTALL,
         )
         if not match:
             return None
 
         tool_name = match.group(1)
-        import json
-        tool_args = json.loads(match.group(2))
+        raw_json = match.group(2).strip()
+        tool_args = json.loads(raw_json)
+
+        # Clean up: remove empty-string values that Llama generates for
+        # optional fields. These cause schema validation errors like
+        # "expected integer, but got string".
+        cleaned_args = {
+            k: v for k, v in tool_args.items()
+            if v != "" and v is not None
+        }
 
         logger.warning(
-            f"Recovered tool call from Groq failed_generation: {tool_name}({list(tool_args.keys())})"
+            f"Recovered tool call from Groq failed_generation: "
+            f"{tool_name}({list(cleaned_args.keys())})"
         )
 
         return LLMResponse(
@@ -59,7 +76,7 @@ def _try_recover_groq_tool_use_failed(error: Exception) -> Optional["LLMResponse
                     ToolCall(
                         id=f"recovered_{tool_name}",
                         name=tool_name,
-                        arguments=json.dumps(tool_args, ensure_ascii=False),
+                        arguments=json.dumps(cleaned_args, ensure_ascii=False),
                     )
                 ],
                 finish_reason="tool_calls",
