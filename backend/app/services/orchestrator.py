@@ -195,6 +195,8 @@ class Orchestrator:
 
         step_count = 0
         max_steps = agent.maxSteps
+        recent_tool_calls: list[str] = []  # Track recent tool call signatures for anti-spam
+        MAX_IDENTICAL_CALLS = 2  # Allow at most 2 identical consecutive tool calls
 
         while step_count < max_steps:
             step_count += 1
@@ -245,6 +247,28 @@ class Orchestrator:
                             "content": tool_result,
                         })
                         continue
+
+                    # Anti-spam: detect repeated identical tool calls
+                    call_signature = f"{fn_name}:{json.dumps(args, sort_keys=True)}"
+                    identical_count = sum(1 for sig in recent_tool_calls[-5:] if sig == call_signature)
+                    if identical_count >= MAX_IDENTICAL_CALLS:
+                        tool_result = (
+                            f"STOP: You already called '{fn_name}' with these exact arguments "
+                            f"{identical_count} times. Do NOT call it again. "
+                            "Summarize what you have done so far and provide a final answer."
+                        )
+                        await ExecutionService.add_step(
+                            execution.id, task.id, agent.id,
+                            StepType.ERROR,
+                            f"Blocked repeated call to {fn_name} (called {identical_count} times with same args)",
+                        )
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": tool_result,
+                        })
+                        continue
+                    recent_tool_calls.append(call_signature)
 
                     if fn_name == "delegate_to_agent":
                         # Delegation — existing logic

@@ -276,22 +276,22 @@ function StepItem({ step, index }: { step: ExecutionStep; index: number }) {
         <Icon className="w-4 h-4" style={{ color }} />
       </div>
       <div className="flex-1 min-w-0 pt-1">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1.5">
           <span
-            className="text-[11px] font-medium uppercase tracking-[0.05rem]"
+            className="text-xs font-semibold uppercase tracking-wide"
             style={{ color }}
           >
-            {step.stepType}
+            {stepLabels[step.stepType] || step.stepType}
           </span>
           <span
-            className="text-[11px]"
+            className="text-xs"
             style={{ color: "var(--on-surface-dim)" }}
           >
             {new Date(step.createdAt).toLocaleTimeString()}
           </span>
         </div>
         <div
-          className="text-sm whitespace-pre-wrap break-all break-words overflow-x-auto rounded-lg p-3 relative"
+          className="text-sm whitespace-pre-wrap break-words leading-relaxed rounded-lg p-3 relative"
           style={{ background: "var(--surface-lowest)" }}
         >
           {isLong && !expanded ? (

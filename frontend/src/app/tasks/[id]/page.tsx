@@ -278,7 +278,7 @@ export default function TaskDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
         {/* Main: Execution Timeline */}
-        <div>
+        <div className="min-w-0">
           {/* Task Input */}
           <div
             className="rounded-xl p-5 mb-6"
@@ -291,7 +291,7 @@ export default function TaskDetailPage() {
               Task Input
             </h3>
             <div
-              className="rounded-lg p-4 text-sm font-mono whitespace-pre-wrap break-all break-words overflow-x-auto"
+              className="rounded-lg p-4 text-sm whitespace-pre-wrap break-words leading-relaxed"
               style={{ background: "var(--surface-lowest)" }}
             >
               {task.input}
@@ -325,7 +325,7 @@ export default function TaskDetailPage() {
                 Final Result
               </h3>
               <div
-                className="rounded-lg p-4 text-sm whitespace-pre-wrap break-all break-words overflow-x-auto"
+                className="rounded-lg p-4 text-sm whitespace-pre-wrap break-words leading-relaxed"
                 style={{ background: "var(--surface-lowest)" }}
               >
                 {task.result}
@@ -350,7 +350,7 @@ export default function TaskDetailPage() {
                 Error
               </h3>
               <div
-                className="rounded-lg p-4 text-sm whitespace-pre-wrap break-all break-words overflow-x-auto"
+                className="rounded-lg p-4 text-sm whitespace-pre-wrap break-words leading-relaxed font-mono"
                 style={{ background: "var(--surface-lowest)" }}
               >
                 {task.error}

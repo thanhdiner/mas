@@ -155,7 +155,7 @@ async def _execute_schedule(schedule_id: str):
     task_doc = {
         "title": f"[Scheduled] {name}",
         "input": prompt,
-        "status": "pending",
+        "status": "queued",
         "assignedAgentId": agent_id,
         "parentTaskId": None,
         "createdBy": "scheduler",

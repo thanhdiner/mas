@@ -77,6 +77,7 @@ def _build_gmail_raw_message(
     message = EmailMessage()
     message["To"] = to
     message["Subject"] = subject
+    message["MIME-Version"] = "1.0"
     if cc:
         message["Cc"] = cc
     if bcc:
@@ -88,12 +89,12 @@ def _build_gmail_raw_message(
         raise ValueError("body_text or body_html is required for Gmail send_email.")
 
     if plain_text_body:
-        message.set_content(plain_text_body)
+        message.set_content(plain_text_body, charset="utf-8")
     else:
-        message.set_content("This email contains HTML content.", subtype="plain")
+        message.set_content("This email contains HTML content.", subtype="plain", charset="utf-8")
 
     if html_body:
-        message.add_alternative(html_body, subtype="html")
+        message.add_alternative(html_body, subtype="html", charset="utf-8")
 
     return base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
 
