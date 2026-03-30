@@ -42,7 +42,7 @@ export function useDashboardAnalytics() {
 export function useDashboardPendingTasks(limit: number = 3) {
   const { data, error, isLoading, mutate } = useSWR<Task[]>(
     ["dashboard-pending-tasks", limit],
-    () => api.tasks.list({ status: "waiting_approval" }).then(res => res.slice(0, limit)).catch(() => []),
+    () => api.tasks.list({ status: "waiting_approval" }).then(res => res.items.slice(0, limit)).catch(() => []),
     { refreshInterval: REFRESH_INTERVAL }
   );
   return { pendingTasks: data ?? [], error, isLoading, mutate };

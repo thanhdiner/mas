@@ -24,14 +24,17 @@ import {
 export default function ApprovalsPage() {
   const { data: pending = [], refetch } = useQuery({
     queryKey: ["approvals", "pending"],
-    queryFn: () => api.tasks.list({ status: "waiting_approval" }),
+    queryFn: async () => {
+      const res = await api.tasks.list({ status: "waiting_approval" });
+      return res.items;
+    },
     refetchInterval: 5000,
   });
   const { data: history = [], isLoading: loading } = useQuery({
     queryKey: ["approvals", "history"],
     queryFn: async () => {
       const allTasks = await api.tasks.list({});
-      return allTasks
+      return allTasks.items
         .filter(
           (t) =>
             t.requiresApproval &&
