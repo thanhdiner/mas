@@ -16,6 +16,7 @@ async def dispatch_task_execution(
     task_id: str,
     depth: int = 0,
     background_tasks: BackgroundTasks | None = None,
+    smart_retry: bool = False,
 ):
     """
     Dispatch a task for execution.
@@ -33,14 +34,14 @@ async def dispatch_task_execution(
             # Fallback to BackgroundTasks
             if background_tasks:
                 from app.services.orchestrator import Orchestrator
-                background_tasks.add_task(Orchestrator.execute_task, task_id, depth)
+                background_tasks.add_task(Orchestrator.execute_task, task_id, depth, smart_retry)
             else:
                 raise
     else:
         if background_tasks is None:
             raise ValueError("background_tasks is required when USE_CELERY is False")
         from app.services.orchestrator import Orchestrator
-        background_tasks.add_task(Orchestrator.execute_task, task_id, depth)
+        background_tasks.add_task(Orchestrator.execute_task, task_id, depth, smart_retry)
         logger.info(f"Task {task_id} dispatched via BackgroundTasks")
 
 

@@ -78,7 +78,7 @@ class Orchestrator:
         return sys_llm["default_model"], sys_llm["default_provider"]
 
     @staticmethod
-    async def execute_task(task_id: str, depth: int = 0):
+    async def execute_task(task_id: str, depth: int = 0, smart_retry: bool = False):
         """Main entry point for executing a task."""
         max_depth = settings.MAX_DELEGATION_DEPTH
 
@@ -121,7 +121,7 @@ class Orchestrator:
         })
 
         try:
-            await Orchestrator._run_agent(task, agent, execution, depth)
+            await Orchestrator._run_agent(task, agent, execution, depth, smart_retry)
         except Exception as e:
             await ExecutionService.add_step(
                 execution.id, task_id, task.assignedAgentId,
@@ -139,7 +139,7 @@ class Orchestrator:
             })
 
     @staticmethod
-    async def _run_agent(task, agent, execution, depth: int):
+    async def _run_agent(task, agent, execution, depth: int, smart_retry: bool = False):
         """Run the LLM agent loop using the unified LLM provider."""
         llm = get_llm_provider()
         model, provider = await Orchestrator._get_agent_model(agent)
@@ -168,9 +168,11 @@ class Orchestrator:
         system_msg += "Provide a clear, complete answer to the task.\n"
 
         # ── Smart Retry: inject completed subtask results ──
-        # When retrying a failed task, skip re-delegation for sub-agents
-        # that already completed successfully in a previous run.
-        cached_results = await Orchestrator._get_completed_subtask_results(task.id)
+        # Only activated when smart_retry=True. Skips re-delegation for
+        # sub-agents that already completed successfully in a previous run.
+        cached_results: list[tuple[str, str]] = []
+        if smart_retry:
+            cached_results = await Orchestrator._get_completed_subtask_results(task.id)
         if cached_results:
             system_msg += "\n\n=== PREVIOUSLY COMPLETED SUB-AGENT RESULTS (DO NOT re-delegate) ===\n"
             system_msg += "The following sub-agents have ALREADY completed their work. "
@@ -429,8 +431,13 @@ class Orchestrator:
             agent_name = doc.get("title", "Sub-agent")
             agent_oid = doc.get("assignedAgentId")
             if agent_oid:
+                from bson import ObjectId
                 from app.utils.object_id import try_to_object_id
-                oid = try_to_object_id(agent_oid)
+                # agent_oid may already be an ObjectId or a string
+                if isinstance(agent_oid, ObjectId):
+                    oid = agent_oid
+                else:
+                    oid = try_to_object_id(str(agent_oid))
                 if oid:
                     agent_doc = await db.agents.find_one({"_id": oid})
                     if agent_doc:

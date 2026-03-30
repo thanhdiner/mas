@@ -310,8 +310,8 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    execute: (id: string) =>
-      fetchAPI<{ message: string; taskId: string }>(`/tasks/${id}/execute`, {
+    execute: (id: string, smartRetry = false) =>
+      fetchAPI<{ message: string; taskId: string }>(`/tasks/${id}/execute${smartRetry ? '?smart_retry=true' : ''}`, {
         method: "POST",
       }),
     cancel: (id: string) =>

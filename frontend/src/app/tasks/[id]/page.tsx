@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { api, getExecutionWebSocketUrl } from "@/lib/api";
 import type { TaskDetail, ExecutionStep } from "@/lib/api";
@@ -128,10 +129,10 @@ export default function TaskDetailPage() {
     stepsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [steps]);
 
-  const handleExecute = async () => {
+  const handleExecute = async (smartRetry = false) => {
     setExecuting(true);
     try {
-      await api.tasks.execute(taskId);
+      await api.tasks.execute(taskId, smartRetry);
       await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : String(err));
@@ -240,9 +241,39 @@ export default function TaskDetailPage() {
                 </Button>
               </>
             )}
-            {canExecute && (
+            {canExecute && task.status === "failed" && task.subtasks && task.subtasks.length > 0 ? (
+              /* Failed task with subtasks → show both Retry and Smart Retry */
+              <>
+                <Button
+                  onClick={() => handleExecute(false)}
+                  disabled={executing}
+                  variant="secondary"
+                  className="bg-surface-high text-foreground border-0 hover:bg-surface-highest"
+                >
+                  {executing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                  )}
+                  Retry
+                </Button>
+                <Button
+                  onClick={() => handleExecute(true)}
+                  disabled={executing}
+                  className="gradient-primary text-[#060e20] font-medium border-0 hover:opacity-90"
+                >
+                  {executing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4 mr-2" />
+                  )}
+                  Smart Retry
+                </Button>
+              </>
+            ) : canExecute ? (
+              /* Queued or failed without subtasks → single Execute/Retry button */
               <Button
-                onClick={handleExecute}
+                onClick={() => handleExecute(false)}
                 disabled={executing}
                 className="gradient-primary text-[#060e20] font-medium border-0 hover:opacity-90"
               >
@@ -253,7 +284,7 @@ export default function TaskDetailPage() {
                 )}
                 {task.status === "failed" ? "Retry" : "Execute"}
               </Button>
-            )}
+            ) : null}
             {canCancel && (
               <Button
                 onClick={handleCancel}

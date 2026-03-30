@@ -79,7 +79,11 @@ async def update_task(task_id: ValidObjectId, data: TaskUpdate):
 
 
 @router.post("/{task_id}/execute")
-async def execute_task(task_id: ValidObjectId, background_tasks: BackgroundTasks):
+async def execute_task(
+    task_id: ValidObjectId,
+    background_tasks: BackgroundTasks,
+    smart_retry: bool = Query(False, description="If true, reuse completed subtask results instead of re-running everything"),
+):
     task = await TaskService.get_task(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
@@ -89,8 +93,8 @@ async def execute_task(task_id: ValidObjectId, background_tasks: BackgroundTasks
             f"Task cannot be executed in '{task.status}' status",
         )
 
-    await dispatch_task_execution(task_id, background_tasks=background_tasks)
-    return {"message": "Task execution started", "taskId": task_id}
+    await dispatch_task_execution(task_id, background_tasks=background_tasks, smart_retry=smart_retry)
+    return {"message": "Task execution started", "taskId": task_id, "smartRetry": smart_retry}
 
 
 @router.post("/{task_id}/cancel")
