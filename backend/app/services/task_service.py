@@ -188,11 +188,7 @@ class TaskService:
         )
         return await TaskService.get_task(task_id)
 
-    @staticmethod
-    async def count_tasks(status: Optional[TaskStatus] = None) -> int:
-        db = get_db()
-        query = {"status": status.value} if status else {}
-        return await db.tasks.count_documents(query)
+
 
     @staticmethod
     async def count_failed_today() -> int:
