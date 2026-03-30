@@ -55,10 +55,10 @@ const CRON_PRESETS = [
   { label: "1st of every month", value: "0 0 1 * *" },
 ];
 
-function formatNextRunStr(dateStr?: string | null) {
+function formatNextRunStr(dateStr?: string | null, forceNowMs?: number) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
-  const now = new Date();
+  const now = forceNowMs ? new Date(forceNowMs) : new Date();
   const diffMs = d.getTime() - now.getTime();
   
   if (diffMs < 0) return "Running soon...";
@@ -84,15 +84,15 @@ function formatNextRunStr(dateStr?: string | null) {
 }
 
 function NextRunCountdown({ dateStr }: { dateStr?: string | null }) {
-  const [, setTick] = useState(0);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    // Isolated interval keeps this component rendering every second
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  return <>{formatNextRunStr(dateStr)}</>;
+  // Suppress hydration warning because client time differs from server time
+  return <span suppressHydrationWarning>{formatNextRunStr(dateStr, now)}</span>;
 }
 
 function formatLastRun(dateStr?: string | null) {
