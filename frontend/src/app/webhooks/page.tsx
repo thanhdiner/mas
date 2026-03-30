@@ -2133,9 +2133,9 @@ export default function WebhooksPage() {
               <p className="text-[11px] uppercase tracking-[0.08rem] text-on-surface-dim">
                 Resolved Notification
               </p>
-              <div className="mt-2 grid gap-3 md:grid-cols-[auto_1fr]">
+              <div className="mt-2 grid items-start gap-4 md:grid-cols-[auto_1fr]">
                 <span
-                  className={`inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
+                  className={`h-fit inline-flex w-fit rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08rem] ${
                     runtimeHealth.alerting.lastResolvedStatus === "sent"
                       ? "bg-[#14b8a61a] text-[#5eead4]"
                       : runtimeHealth.alerting.lastResolvedStatus === "failed"
