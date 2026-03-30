@@ -79,6 +79,7 @@ export default function SchedulesPage() {
   const { data, isLoading: loading } = useQuery({
     queryKey: ["schedules"],
     queryFn: () => Promise.all([api.schedules.list(), api.agents.list()]),
+    refetchInterval: 5000,
   });
   const schedules = data?.[0] ?? [];
   const agents = data?.[1] ?? [];
@@ -86,6 +87,13 @@ export default function SchedulesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
+
+  // Trigger re-render every second to update countdowns
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Debounce search
   useEffect(() => {
