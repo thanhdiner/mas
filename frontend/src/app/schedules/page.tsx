@@ -55,7 +55,7 @@ const CRON_PRESETS = [
   { label: "1st of every month", value: "0 0 1 * *" },
 ];
 
-function formatNextRun(dateStr?: string | null) {
+function formatNextRunStr(dateStr?: string | null) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   const now = new Date();
@@ -83,6 +83,18 @@ function formatNextRun(dateStr?: string | null) {
   return `in ${secs}s`;
 }
 
+function NextRunCountdown({ dateStr }: { dateStr?: string | null }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    // Isolated interval keeps this component rendering every second
+    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return <>{formatNextRunStr(dateStr)}</>;
+}
+
 function formatLastRun(dateStr?: string | null) {
   if (!dateStr) return "Never";
   return new Date(dateStr).toLocaleString("en-US", {
@@ -103,13 +115,6 @@ export default function SchedulesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
-
-  // Trigger re-render every second to update countdowns
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -351,7 +356,7 @@ export default function SchedulesPage() {
                   <div className="hidden md:flex items-center gap-8 text-xs shrink-0">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold mb-1" style={{ color: "var(--on-surface-dim)" }}>Next Run</p>
-                      <p className="text-accent-cyan font-medium">{formatNextRun(s.nextRunAt)}</p>
+                      <p className="text-accent-cyan font-medium"><NextRunCountdown dateStr={s.nextRunAt} /></p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold mb-1" style={{ color: "var(--on-surface-dim)" }}>Last Run</p>
