@@ -41,6 +41,22 @@ class TaskService:
         return [_doc_to_response(d) for d in docs]
 
     @staticmethod
+    async def count_tasks(
+        status: Optional[TaskStatus] = None,
+        agent_id: Optional[str] = None,
+        parent_only: bool = False,
+    ) -> int:
+        db = get_db()
+        query: dict = {}
+        if status:
+            query["status"] = status.value
+        if agent_id:
+            query["assignedAgentId"] = agent_id
+        if parent_only:
+            query["parentTaskId"] = None
+        return await db.tasks.count_documents(query)
+
+    @staticmethod
     async def get_task(task_id: str) -> Optional[TaskResponse]:
         db = get_db()
         doc = await db.tasks.find_one({"_id": to_object_id(task_id, "task_id")})

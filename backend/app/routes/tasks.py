@@ -29,24 +29,36 @@ async def _get_active_agent_or_raise(agent_id: str):
     return agent
 
 
-@router.get("", response_model=list[TaskResponse])
+@router.get("")
 async def list_tasks(
     status: Optional[TaskStatus] = Query(None),
     agent_id: Optional[str] = Query(None),
     parent_only: bool = Query(False),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
 ):
     if agent_id is not None:
         validate_object_id(agent_id, "agent_id")
 
-    return await TaskService.list_tasks(
+    skip = (page - 1) * page_size
+    items = await TaskService.list_tasks(
         status=status,
         agent_id=agent_id,
         parent_only=parent_only,
         skip=skip,
-        limit=limit,
+        limit=page_size,
     )
+    total = await TaskService.count_tasks(
+        status=status,
+        agent_id=agent_id,
+        parent_only=parent_only,
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
 
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)

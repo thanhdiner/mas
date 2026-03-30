@@ -298,11 +298,13 @@ export const api = {
       fetchAPI<{ message: string }>(`/agents/${id}`, { method: "DELETE" }),
   },
   tasks: {
-    list: (params?: { status?: string; parent_only?: boolean }) => {
+    list: (params?: { status?: string; parent_only?: boolean; page?: number; pageSize?: number }) => {
       const query = new URLSearchParams();
       if (params?.status) query.set("status", params.status);
       if (params?.parent_only) query.set("parent_only", "true");
-      return fetchAPI<Task[]>(`/tasks?${query.toString()}`);
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.pageSize) query.set("page_size", String(params.pageSize));
+      return fetchAPI<{ items: Task[]; total: number; page: number; pageSize: number }>(`/tasks?${query.toString()}`);
     },
     get: (id: string) => fetchAPI<TaskDetail>(`/tasks/${id}`),
     create: (data: Partial<Task>) =>

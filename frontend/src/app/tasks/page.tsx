@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -9,12 +9,16 @@ import {
   Plus,
   Filter,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import type { TaskStatus } from "@/lib/api";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+
+const PAGE_SIZE = 15;
 
 const statusFilters: { label: string; value: TaskStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -30,37 +34,58 @@ function TasksContent() {
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") || "all";
   const [filter, setFilter] = useState(initialStatus);
-  const { tasks, isLoading: loading } = useTasks(
-    filter !== "all" ? { parent_only: true, status: filter } : { parent_only: true }
+  const [page, setPage] = useState(1);
+
+  const { tasks, total, isLoading: loading } = useTasks(
+    filter !== "all"
+      ? { parent_only: true, status: filter, page, pageSize: PAGE_SIZE }
+      : { parent_only: true, page, pageSize: PAGE_SIZE }
   );
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const handleFilterChange = (value: string) => {
+    setFilter(value);
+    setPage(1); // Reset to page 1 when filter changes
+  };
 
   return (
     <>
-      {/* Status Filters */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <Filter
-          className="w-4 h-4 shrink-0"
-          style={{ color: "var(--on-surface-dim)" }}
-        />
-        {statusFilters.map((sf) => (
-          <button
-            key={sf.value}
-            onClick={() => setFilter(sf.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
-              filter === sf.value
-                ? "text-[#060e20]"
-                : "text-on-surface-dim hover:text-foreground"
-            }`}
-            style={{
-              background:
+      {/* Status Filters + Count */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter
+            className="w-4 h-4 shrink-0"
+            style={{ color: "var(--on-surface-dim)" }}
+          />
+          {statusFilters.map((sf) => (
+            <button
+              key={sf.value}
+              onClick={() => handleFilterChange(sf.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 filter === sf.value
-                  ? "linear-gradient(135deg, #7bd0ff, #008abb)"
-                  : "var(--surface-high)",
-            }}
+                  ? "text-[#060e20]"
+                  : "text-on-surface-dim hover:text-foreground"
+              }`}
+              style={{
+                background:
+                  filter === sf.value
+                    ? "linear-gradient(135deg, #7bd0ff, #008abb)"
+                    : "var(--surface-high)",
+              }}
+            >
+              {sf.label}
+            </button>
+          ))}
+        </div>
+        {!loading && (
+          <span
+            className="text-xs tabular-nums"
+            style={{ color: "var(--on-surface-dim)" }}
           >
-            {sf.label}
-          </button>
-        ))}
+            {total} task{total !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       {/* Tasks Table */}
@@ -163,6 +188,72 @@ function TasksContent() {
                 </Link>
               ))}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div
+                className="flex items-center justify-between px-5 py-3"
+                style={{
+                  background: "var(--surface-high)",
+                  borderTop: "1px solid rgba(255,255,255,0.04)",
+                }}
+              >
+                <span
+                  className="text-xs tabular-nums"
+                  style={{ color: "var(--on-surface-dim)" }}
+                >
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  {/* Page number buttons */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`w-8 h-8 rounded-md text-xs font-medium transition-all ${
+                          page === pageNum
+                            ? "text-[#060e20]"
+                            : "text-on-surface-dim hover:text-foreground hover:bg-surface-highest"
+                        }`}
+                        style={{
+                          background:
+                            page === pageNum
+                              ? "linear-gradient(135deg, #7bd0ff, #008abb)"
+                              : "transparent",
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
