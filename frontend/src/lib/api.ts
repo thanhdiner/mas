@@ -331,6 +331,8 @@ export const api = {
     get: (id: string) => fetchAPI<Execution>(`/executions/${id}`),
     getByTask: (taskId: string) =>
       fetchAPI<Execution>(`/executions/task/${taskId}`),
+    listByTask: (taskId: string) =>
+      fetchAPI<Execution[]>(`/executions/task/${taskId}/history`),
     getSteps: (id: string) =>
       fetchAPI<ExecutionStep[]>(`/executions/${id}/steps`),
   },

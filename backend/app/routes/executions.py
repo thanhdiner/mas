@@ -30,3 +30,9 @@ async def get_execution_by_task(task_id: ValidObjectId):
             "No execution found for this task",
         )
     return execution
+
+
+@router.get("/task/{task_id}/history", response_model=list[ExecutionResponse])
+async def list_executions_by_task(task_id: ValidObjectId):
+    """List all executions for a task (newest first)."""
+    return await ExecutionService.list_executions_by_task(task_id)

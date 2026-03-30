@@ -50,6 +50,14 @@ class ExecutionService:
         return doc_to_model(doc, ExecutionResponse)
 
     @staticmethod
+    async def list_executions_by_task(task_id: str) -> list[ExecutionResponse]:
+        """Return ALL executions for a task, newest first."""
+        db = get_db()
+        cursor = db.executions.find({"taskId": task_id}).sort("startedAt", -1)
+        docs = await cursor.to_list(length=50)
+        return [doc_to_model(doc, ExecutionResponse) for doc in docs]
+
+    @staticmethod
     async def complete_execution(
         execution_id: str,
         status: ExecutionStatus,

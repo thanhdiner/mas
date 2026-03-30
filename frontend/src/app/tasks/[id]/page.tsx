@@ -20,7 +20,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { api, getExecutionWebSocketUrl } from "@/lib/api";
-import type { TaskDetail, ExecutionStep } from "@/lib/api";
+import type { TaskDetail, ExecutionStep, Execution } from "@/lib/api";
 import { parseWsMessage } from "@/lib/ws-types";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -53,6 +53,8 @@ export default function TaskDetailPage() {
   const [steps, setSteps] = useState<ExecutionStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
+  const [execHistory, setExecHistory] = useState<Execution[]>([]);
+  const [activeExecId, setActiveExecId] = useState<string | null>(null);
   const stepsEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -61,15 +63,33 @@ export default function TaskDetailPage() {
       const t = await api.tasks.get(taskId);
       setTask(t);
 
+      // Load execution history
+      try {
+        const history = await api.executions.listByTask(taskId);
+        setExecHistory(history);
+      } catch { /* no history */ }
+
       if (t.execution) {
-        const s = await api.executions.getSteps(t.execution.id);
-        setSteps(s);
+        // If no active exec selected or it matches the latest, show latest
+        if (!activeExecId || activeExecId === t.execution.id) {
+          setActiveExecId(t.execution.id);
+          const s = await api.executions.getSteps(t.execution.id);
+          setSteps(s);
+        }
       }
     } catch {
       // Ignore errors
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadExecution = async (execId: string) => {
+    setActiveExecId(execId);
+    try {
+      const s = await api.executions.getSteps(execId);
+      setSteps(s);
+    } catch { /* ignore */ }
   };
 
   useEffect(() => {
@@ -334,12 +354,34 @@ export default function TaskDetailPage() {
             className="rounded-xl p-5"
             style={{ background: "var(--surface-container)" }}
           >
-            <h3
-              className="text-[11px] font-medium uppercase tracking-[0.05rem] mb-5"
-              style={{ color: "var(--on-surface-dim)" }}
-            >
-              Execution Timeline
-            </h3>
+            <div className="flex items-center justify-between mb-5">
+              <h3
+                className="text-[11px] font-medium uppercase tracking-[0.05rem]"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Execution Timeline
+              </h3>
+              {execHistory.length > 1 && (
+                <select
+                  value={activeExecId || ""}
+                  onChange={(e) => loadExecution(e.target.value)}
+                  className="text-xs rounded-md px-2 py-1 outline-none border cursor-pointer"
+                  style={{
+                    background: "var(--surface-lowest)",
+                    color: "var(--on-surface)",
+                    borderColor: "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  {execHistory.map((exec, i) => (
+                    <option key={exec.id} value={exec.id}>
+                      Run #{execHistory.length - i}{" "}
+                      {exec.status === "completed" ? "✅" : exec.status === "failed" ? "❌" : "🔄"}{" "}
+                      {new Date(exec.startedAt).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             <ExecutionTimeline steps={steps} isRunning={isRunning} />
           </div>
 
