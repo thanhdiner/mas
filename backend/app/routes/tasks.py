@@ -54,7 +54,7 @@ async def list_tasks(
         parent_only=parent_only,
     )
     return {
-        "items": items,
+        "items": [item.model_dump() for item in items],
         "total": total,
         "page": page,
         "pageSize": page_size,
