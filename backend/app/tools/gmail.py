@@ -65,6 +65,112 @@ PARAMS = {
 }
 
 
+def _plain_text_to_html_newsletter(text: str, subject: str) -> str:
+    """
+    Convert plain-text newsletter content into a beautiful dark-themed HTML email.
+    Auto-detects section headings (e.g. CÔNG NGHỆ:, AI:, CHỨNG KHOÁN:) and
+    formats them as styled blocks.
+    """
+    import re
+    import html as html_mod
+
+    # Split into sections by common heading patterns
+    # Matches lines like "CÔNG NGHỆ:", "AI:", "CHỨNG KHOÁN:", "TECHNOLOGY:", etc.
+    section_pattern = re.compile(
+        r'^([A-ZÀ-Ỹ][A-ZÀ-Ỹ\s&/]{1,40})\s*:\s*(.*)$',
+        re.MULTILINE
+    )
+
+    sections: list[tuple[str, str]] = []
+    last_end = 0
+    intro_text = ""
+
+    for match in section_pattern.finditer(text):
+        if last_end == 0:
+            intro_text = text[:match.start()].strip()
+        last_end = match.end()
+        heading = match.group(1).strip()
+        # Collect everything from after the colon to the next section or end
+        sections.append((heading, ""))
+
+    # Re-split to get section content properly
+    parts = section_pattern.split(text)
+    if len(parts) > 1:
+        intro_text = parts[0].strip()
+        sections = []
+        i = 1
+        while i < len(parts) - 1:
+            heading = parts[i].strip()
+            content = (parts[i + 1] + (parts[i + 2] if i + 2 < len(parts) and not section_pattern.match(parts[i + 2]) else "")).strip()
+            sections.append((heading, content))
+            i += 3
+    else:
+        # No sections found, treat entire text as one block
+        sections = [("", text.strip())]
+        intro_text = ""
+
+    # Color palette for sections
+    colors = ["#7bd0ff", "#4edea3", "#f0c674", "#c792ea", "#ff7eb3", "#82aaff"]
+
+    sections_html = ""
+    for idx, (heading, content) in enumerate(sections):
+        color = colors[idx % len(colors)]
+        escaped_content = html_mod.escape(content).replace("\n", "<br>")
+
+        if heading:
+            sections_html += f"""
+            <div style="margin-bottom: 24px; border-left: 3px solid {color}; padding-left: 16px;">
+              <h2 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: {color}; text-transform: uppercase; letter-spacing: 1px;">
+                {html_mod.escape(heading)}
+              </h2>
+              <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #d1d5db;">
+                {escaped_content}
+              </p>
+            </div>"""
+        else:
+            sections_html += f"""
+            <div style="margin-bottom: 24px;">
+              <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #d1d5db;">
+                {escaped_content}
+              </p>
+            </div>"""
+
+    escaped_intro = html_mod.escape(intro_text).replace("\n", "<br>") if intro_text else ""
+    intro_block = f"""<p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.7; color: #9ca3af;">{escaped_intro}</p>""" if escaped_intro else ""
+
+    from datetime import datetime, timezone
+    date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+
+    return f"""<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"></head>
+<body style="margin: 0; padding: 0; background-color: #0f0f1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px 16px 0 0; padding: 32px 28px 24px; border-bottom: 1px solid rgba(123, 208, 255, 0.2);">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #7bd0ff, #4edea3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        {html_mod.escape(subject)}
+      </h1>
+      <p style="margin: 8px 0 0 0; font-size: 12px; color: #6b7280; letter-spacing: 0.5px;">
+        📅 {date_str} &nbsp;·&nbsp; Powered by MAS AI Agents
+      </p>
+    </div>
+    <!-- Body -->
+    <div style="background: #1a1a2e; padding: 28px; border-radius: 0 0 16px 16px;">
+      {intro_block}
+      {sections_html}
+      <!-- Footer -->
+      <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
+        <p style="margin: 0; font-size: 11px; color: #4b5563;">
+          Bản tin được tạo tự động bởi <span style="color: #7bd0ff;">Multi-Agent System</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
 def _build_gmail_raw_message(
     *,
     to: str,
@@ -88,10 +194,15 @@ def _build_gmail_raw_message(
     if not plain_text_body and not html_body:
         raise ValueError("body_text or body_html is required for Gmail send_email.")
 
+    # Always set plain text as fallback
     if plain_text_body:
         message.set_content(plain_text_body, charset="utf-8")
     else:
         message.set_content("This email contains HTML content.", subtype="plain", charset="utf-8")
+
+    # Auto-generate beautiful HTML if only plain text was provided
+    if not html_body and plain_text_body:
+        html_body = _plain_text_to_html_newsletter(plain_text_body, subject)
 
     if html_body:
         message.add_alternative(html_body, subtype="html", charset="utf-8")
