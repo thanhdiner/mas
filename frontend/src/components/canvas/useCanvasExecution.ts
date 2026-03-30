@@ -24,8 +24,8 @@ export function useCanvasExecution({
 }: UseCanvasExecutionOptions) {
   /* ---- dialog state ---- */
   const [showRunDialog, setShowRunDialog] = useState(false);
-  const [runInput, setRunInput] = useState("");
-  const [runTitle, setRunTitle] = useState("");
+  const [runInput, setRunInput] = useState("Execute your task as instructed in your system prompt.");
+  const [runTitle, setRunTitle] = useState("Workflow Run");
 
   /* ---- execution state ---- */
   const [isExecuting, setIsExecuting] = useState(false);
@@ -199,8 +199,8 @@ export function useCanvasExecution({
       );
       setIsExecuting(false);
     }
-    setRunTitle("");
-    setRunInput("");
+    setRunTitle(`${rootAgentName ?? "Workflow"} Run`);
+    setRunInput("Execute your task as instructed in your system prompt.");
   }, [
     runTitle,
     runInput,
