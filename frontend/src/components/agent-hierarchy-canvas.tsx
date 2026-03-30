@@ -24,10 +24,13 @@ export function AgentHierarchyCanvas() {
   /* ---- graph state & actions ---- */
   const graph = useCanvasGraph();
 
+  /* ---- execution target: selected agent or root ---- */
+  const execAgent = graph.selectedAgent ?? graph.rootAgents[0] ?? null;
+
   /* ---- execution state & actions ---- */
   const exec = useCanvasExecution({
-    rootAgentId: graph.rootAgents[0]?.id,
-    rootAgentName: graph.rootAgents[0]?.name,
+    rootAgentId: execAgent?.id,
+    rootAgentName: execAgent?.name,
     setNodes: graph.setNodes,
     setEdges: graph.setEdges,
   });
@@ -48,7 +51,9 @@ export function AgentHierarchyCanvas() {
                 disabled={graph.agents.length === 0}
               >
                 <Play className="mr-2 h-4 w-4" />
-                Run Workflow
+                {graph.selectedAgent
+                  ? `Run ${graph.selectedAgent.name}`
+                  : "Run Workflow"}
               </Button>
             ) : (
               <Button

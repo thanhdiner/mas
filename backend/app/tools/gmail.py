@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import base64
-from email.message import EmailMessage
-from email.policy import SMTPUTF8
 from typing import Any
 
 from app.tools.integration_common import execute_integration_request
@@ -204,32 +202,36 @@ def _build_gmail_raw_message(
     cc: str | None,
     bcc: str | None,
 ) -> str:
-    message = EmailMessage(policy=SMTPUTF8)
-    message["To"] = to
-    message["Subject"] = subject
-    message["MIME-Version"] = "1.0"
-    if cc:
-        message["Cc"] = cc
-    if bcc:
-        message["Bcc"] = bcc
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     plain_text_body = (body_text or "").strip()
     html_body = (body_html or "").strip()
     if not plain_text_body and not html_body:
         raise ValueError("body_text or body_html is required for Gmail send_email.")
 
-    # Always set plain text as fallback
-    if plain_text_body:
-        message.set_content(plain_text_body, charset="utf-8")
-    else:
-        message.set_content("This email contains HTML content.", subtype="plain", charset="utf-8")
-
     # Auto-generate beautiful HTML if only plain text was provided
     if not html_body and plain_text_body:
         html_body = _plain_text_to_html_newsletter(plain_text_body, subject)
 
+    # Build MIME message with explicit UTF-8 encoding
+    message = MIMEMultipart("alternative")
+    message["To"] = to
+    message["Subject"] = subject
+    if cc:
+        message["Cc"] = cc
+    if bcc:
+        message["Bcc"] = bcc
+
+    # Plain text part (fallback)
+    if plain_text_body:
+        part_plain = MIMEText(plain_text_body, "plain", "utf-8")
+        message.attach(part_plain)
+
+    # HTML part (preferred)
     if html_body:
-        message.add_alternative(html_body, subtype="html", charset="utf-8")
+        part_html = MIMEText(html_body, "html", "utf-8")
+        message.attach(part_html)
 
     return base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
 
