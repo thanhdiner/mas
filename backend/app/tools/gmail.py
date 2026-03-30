@@ -74,40 +74,50 @@ def _plain_text_to_html_newsletter(text: str, subject: str) -> str:
     import re
     import html as html_mod
 
-    # Split into sections by common heading patterns
-    # Matches lines like "CÔNG NGHỆ:", "AI:", "CHỨNG KHOÁN:", "TECHNOLOGY:", etc.
-    section_pattern = re.compile(
-        r'^([A-ZÀ-Ỹ][A-ZÀ-Ỹ\s&/]{1,40})\s*:\s*(.*)$',
-        re.MULTILINE
-    )
-
+    # Split text into sections by looking for uppercase heading lines
+    # ending with a colon, e.g. "CÔNG NGHỆ:" or "AI:"
+    lines = text.strip().split("\n")
     sections: list[tuple[str, str]] = []
-    last_end = 0
-    intro_text = ""
+    intro_lines: list[str] = []
+    current_heading = ""
+    current_content: list[str] = []
 
-    for match in section_pattern.finditer(text):
-        if last_end == 0:
-            intro_text = text[:match.start()].strip()
-        last_end = match.end()
-        heading = match.group(1).strip()
-        # Collect everything from after the colon to the next section or end
-        sections.append((heading, ""))
+    for line in lines:
+        stripped = line.strip()
+        # Check if this line looks like a section heading: 
+        # All-caps text followed by colon, e.g. "CÔNG NGHỆ: ..."
+        colon_pos = stripped.find(":")
+        if colon_pos > 0 and colon_pos <= 40:
+            before_colon = stripped[:colon_pos].strip()
+            after_colon = stripped[colon_pos + 1:].strip()
+            # Check if the part before colon is uppercase-like (no lowercase)
+            if before_colon and before_colon == before_colon.upper() and any(c.isalpha() for c in before_colon):
+                # Save previous section
+                if current_heading:
+                    sections.append((current_heading, "\n".join(current_content).strip()))
+                elif current_content:
+                    intro_lines.extend(current_content)
+                current_heading = before_colon
+                current_content = [after_colon] if after_colon else []
+                continue
 
-    # Re-split to get section content properly
-    parts = section_pattern.split(text)
-    if len(parts) > 1:
-        intro_text = parts[0].strip()
-        sections = []
-        i = 1
-        while i < len(parts) - 1:
-            heading = parts[i].strip()
-            content = (parts[i + 1] + (parts[i + 2] if i + 2 < len(parts) and not section_pattern.match(parts[i + 2]) else "")).strip()
-            sections.append((heading, content))
-            i += 3
-    else:
-        # No sections found, treat entire text as one block
+        if current_heading:
+            current_content.append(stripped)
+        else:
+            intro_lines.append(stripped)
+
+    # Don't forget last section
+    if current_heading:
+        sections.append((current_heading, "\n".join(current_content).strip()))
+    elif current_content:
+        intro_lines.extend(current_content)
+
+    # If no sections found, treat everything as one block
+    if not sections:
         sections = [("", text.strip())]
-        intro_text = ""
+        intro_lines = []
+
+    intro_text = "\n".join(intro_lines).strip()
 
     # Color palette for sections
     colors = ["#7bd0ff", "#4edea3", "#f0c674", "#c792ea", "#ff7eb3", "#82aaff"]
