@@ -167,23 +167,39 @@ class Orchestrator:
         system_msg += f"\nMaximum steps allowed: {agent.maxSteps}\n"
         system_msg += "Provide a clear, complete answer to the task.\n"
 
+        # ── Smart Retry: inject completed subtask results ──
+        # When retrying a failed task, skip re-delegation for sub-agents
+        # that already completed successfully in a previous run.
+        cached_results = await Orchestrator._get_completed_subtask_results(task.id)
+        if cached_results:
+            system_msg += "\n\n=== PREVIOUSLY COMPLETED SUB-AGENT RESULTS (DO NOT re-delegate) ===\n"
+            system_msg += "The following sub-agents have ALREADY completed their work. "
+            system_msg += "Use their results directly. Do NOT call delegate_to_agent for them again.\n\n"
+            for agent_name, result_text in cached_results:
+                system_msg += f"--- {agent_name} ---\n{result_text}\n\n"
+            system_msg += "=== END OF CACHED RESULTS ===\n"
+            system_msg += "Proceed to the next step (e.g. compose and send email) using the results above.\n"
+
         messages = [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": f"Task: {task.title}\n\nInput:\n{task.input}"},
         ]
 
         # Add step: thinking
+        thinking_msg = f"Agent '{agent.name}' is analyzing the task (model: {model})..."
+        if cached_results:
+            thinking_msg += f" [Smart Retry: reusing {len(cached_results)} cached sub-agent result(s)]"
         await ExecutionService.add_step(
             execution.id, task.id, agent.id,
             StepType.THINKING,
-            f"Agent '{agent.name}' is analyzing the task (model: {model})...",
+            thinking_msg,
         )
         await ws_manager.broadcast(execution.id, {
             "type": "step",
             "stepType": "thinking",
             "agentId": agent.id,
             "agentName": agent.name,
-            "content": f"Agent '{agent.name}' is analyzing the task (model: {model})...",
+            "content": thinking_msg,
         })
 
         # Prepare tools — real tools from registry + delegation
@@ -385,6 +401,44 @@ class Orchestrator:
             task.id, TaskStatus.FAILED,
             error=f"Exceeded maximum steps ({max_steps})",
         )
+
+    @staticmethod
+    async def _get_completed_subtask_results(parent_task_id: str) -> list[tuple[str, str]]:
+        """
+        Check if this task has completed subtasks from a previous run.
+        Returns a list of (agent_name, result) tuples for completed subtasks.
+        Used for 'Smart Retry' — avoids re-delegating work that already succeeded.
+        """
+        from app.database import get_db
+        db = get_db()
+        if db is None:
+            return []
+
+        cursor = db.tasks.find({
+            "parentTaskId": parent_task_id,
+            "status": "done",
+            "result": {"$ne": None},
+        })
+        subtask_docs = await cursor.to_list(length=50)
+        if not subtask_docs:
+            return []
+
+        results = []
+        for doc in subtask_docs:
+            # Resolve agent name
+            agent_name = doc.get("title", "Sub-agent")
+            agent_oid = doc.get("assignedAgentId")
+            if agent_oid:
+                from app.utils.object_id import try_to_object_id
+                oid = try_to_object_id(agent_oid)
+                if oid:
+                    agent_doc = await db.agents.find_one({"_id": oid})
+                    if agent_doc:
+                        agent_name = agent_doc["name"]
+
+            results.append((agent_name, doc["result"]))
+
+        return results
 
     @staticmethod
     async def _handle_delegation(task, agent, execution, args: dict, depth: int) -> Optional[str]:
