@@ -87,7 +87,7 @@ async def execute_task(
     task = await TaskService.get_task(task_id)
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
-    if task.status not in [TaskStatus.QUEUED, TaskStatus.FAILED]:
+    if task.status not in [TaskStatus.QUEUED, TaskStatus.FAILED, TaskStatus.DONE]:
         raise BadRequestError(
             "task_invalid_status",
             f"Task cannot be executed in '{task.status}' status",

@@ -219,6 +219,7 @@ export default function TaskDetailPage() {
   const isRunning = task.status === "running";
   const canExecute =
     task.status === "queued" || task.status === "failed";
+  const canRerun = task.status === "done";
   const canCancel =
     task.status === "running" ||
     task.status === "queued" ||
@@ -313,6 +314,21 @@ export default function TaskDetailPage() {
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancel
+              </Button>
+            )}
+            {canRerun && (
+              <Button
+                onClick={() => handleExecute(false)}
+                disabled={executing}
+                variant="secondary"
+                className="bg-surface-high text-foreground border-0 hover:bg-surface-highest"
+              >
+                {executing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Re-run
               </Button>
             )}
             <Button
