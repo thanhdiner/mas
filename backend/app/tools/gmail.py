@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from email.message import EmailMessage
+from email.policy import SMTPUTF8
 from typing import Any
 
 from app.tools.integration_common import execute_integration_request
@@ -153,30 +154,43 @@ def _plain_text_to_html_newsletter(text: str, subject: str) -> str:
 
     return f"""<!DOCTYPE html>
 <html lang="vi">
-<head><meta charset="UTF-8"></head>
-<body style="margin: 0; padding: 0; background-color: #0f0f1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <!-- Header -->
-    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px 16px 0 0; padding: 32px 28px 24px; border-bottom: 1px solid rgba(123, 208, 255, 0.2);">
-      <h1 style="margin: 0; font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #7bd0ff, #4edea3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-        {html_mod.escape(subject)}
-      </h1>
-      <p style="margin: 8px 0 0 0; font-size: 12px; color: #6b7280; letter-spacing: 0.5px;">
-        📅 {date_str} &nbsp;·&nbsp; Powered by MAS AI Agents
-      </p>
-    </div>
-    <!-- Body -->
-    <div style="background: #1a1a2e; padding: 28px; border-radius: 0 0 16px 16px;">
-      {intro_block}
-      {sections_html}
-      <!-- Footer -->
-      <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
-        <p style="margin: 0; font-size: 11px; color: #4b5563;">
-          Bản tin được tạo tự động bởi <span style="color: #7bd0ff;">Multi-Agent System</span>
-        </p>
-      </div>
-    </div>
-  </div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f0f1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #0f0f1a; min-height: 100vh;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #1a1a2e; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px 28px 24px; border-bottom: 1px solid rgba(123, 208, 255, 0.2);">
+              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #7bd0ff;">
+                {html_mod.escape(subject)}
+              </h1>
+              <p style="margin: 8px 0 0 0; font-size: 13px; color: #8b9bb4; letter-spacing: 0.5px;">
+                📅 {date_str} &nbsp;·&nbsp; Powered by MAS AI Agents
+              </p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px 28px;">
+              {intro_block}
+              {sections_html}
+              <!-- Footer -->
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 500;">
+                  Bản tin được tạo tự động bởi <span style="color: #7bd0ff;">Multi-Agent System</span>
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>"""
 
@@ -190,7 +204,7 @@ def _build_gmail_raw_message(
     cc: str | None,
     bcc: str | None,
 ) -> str:
-    message = EmailMessage()
+    message = EmailMessage(policy=SMTPUTF8)
     message["To"] = to
     message["Subject"] = subject
     message["MIME-Version"] = "1.0"
