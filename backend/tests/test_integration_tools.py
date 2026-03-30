@@ -132,14 +132,30 @@ def test_gmail_tool_sends_base64url_message(monkeypatch):
     assert captured["service_name"] == "Gmail"
     assert captured["url"] == "/gmail/v1/users/me/messages/send"
     assert captured["method"] == "POST"
+    
+    import email
 
     raw_message = captured["json_body"]["raw"]
     padding = "=" * ((4 - len(raw_message) % 4) % 4)
     decoded = base64.urlsafe_b64decode(f"{raw_message}{padding}").decode("utf-8")
 
-    assert "To: demo@example.com" in decoded
-    assert "Subject: Integration test" in decoded
-    assert "Hello from MAS" in decoded
+    # Parse the MIME message
+    msg = email.message_from_string(decoded)
+    assert msg["To"] == "demo@example.com"
+    assert msg["Subject"] == "Integration test"
+
+    # Extract plain text content from multipart
+    plain_text = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.get_content_type() == "text/plain":
+                # get_payload(decode=True) handles the base64 decoding
+                plain_text = part.get_payload(decode=True).decode("utf-8", errors="replace")
+                break
+    else:
+        plain_text = msg.get_payload(decode=True).decode("utf-8", errors="replace")
+
+    assert "Hello from MAS" in plain_text
 
 
 def test_tool_registry_lists_new_integration_tools():

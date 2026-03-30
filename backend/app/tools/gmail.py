@@ -70,7 +70,6 @@ def _plain_text_to_html_newsletter(text: str, subject: str) -> str:
     Auto-detects section headings (e.g. CÔNG NGHỆ:, AI:, CHỨNG KHOÁN:) and
     formats them as styled blocks.
     """
-    import re
     import html as html_mod
 
     # Split text into sections by looking for uppercase heading lines
