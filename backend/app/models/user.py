@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -14,7 +14,7 @@ class UserInDB(UserBase):
     hashed_password: str
     is_active: bool = True
     avatar_url: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:
         populate_by_name = True

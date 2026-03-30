@@ -4,7 +4,7 @@ import asyncio
 import csv
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import Response
@@ -273,7 +273,7 @@ async def export_webhook_deliveries(
             ]
         )
 
-    timestamp_suffix = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp_suffix = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     filename = f"{_slugify_filename(webhook.name)}-deliveries-{timestamp_suffix}.csv"
     return Response(
         content=csv_buffer.getvalue(),
