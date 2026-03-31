@@ -111,7 +111,7 @@ function SchedulesContent() {
   const router = useRouter();
   const pathname = usePathname();
   const page = parseInt(searchParams.get("page") || "1", 10);
-  const pageSize = 3; // Giảm xuống 3 để test do hiện tại bạn mới có 5 schedules
+  const pageSize = 10;
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ["schedules", page],
