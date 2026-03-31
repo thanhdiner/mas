@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.dependencies import ValidObjectId
 from app.errors import NotFoundError
@@ -16,9 +16,22 @@ async def get_execution(execution_id: ValidObjectId):
     return execution
 
 
-@router.get("/{execution_id}/steps", response_model=list[ExecutionStepResponse])
-async def get_execution_steps(execution_id: ValidObjectId):
-    return await ExecutionService.get_steps(execution_id)
+@router.get("/{execution_id}/steps")
+async def get_execution_steps(
+    execution_id: ValidObjectId,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=500),
+):
+    skip = (page - 1) * page_size
+    items, total = await ExecutionService.get_steps(
+        execution_id, skip=skip, limit=page_size
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
 
 
 @router.get("/task/{task_id}", response_model=ExecutionResponse)
@@ -32,7 +45,20 @@ async def get_execution_by_task(task_id: ValidObjectId):
     return execution
 
 
-@router.get("/task/{task_id}/history", response_model=list[ExecutionResponse])
-async def list_executions_by_task(task_id: ValidObjectId):
-    """List all executions for a task (newest first)."""
-    return await ExecutionService.list_executions_by_task(task_id)
+@router.get("/task/{task_id}/history")
+async def list_executions_by_task(
+    task_id: ValidObjectId,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    """List executions for a task with pagination (newest first)."""
+    skip = (page - 1) * page_size
+    items, total = await ExecutionService.list_executions_by_task(
+        task_id, skip=skip, limit=page_size
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }

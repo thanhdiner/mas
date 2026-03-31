@@ -50,12 +50,21 @@ class ExecutionService:
         return doc_to_model(doc, ExecutionResponse)
 
     @staticmethod
-    async def list_executions_by_task(task_id: str) -> list[ExecutionResponse]:
-        """Return ALL executions for a task, newest first."""
+    async def list_executions_by_task(
+        task_id: str, *, skip: int = 0, limit: int = 20
+    ) -> tuple[list[ExecutionResponse], int]:
+        """Return paginated executions for a task, newest first."""
         db = get_db()
-        cursor = db.executions.find({"taskId": task_id}).sort("startedAt", -1)
-        docs = await cursor.to_list(length=50)
-        return [doc_to_model(doc, ExecutionResponse) for doc in docs]
+        query = {"taskId": task_id}
+        total = await db.executions.count_documents(query)
+        cursor = (
+            db.executions.find(query)
+            .sort("startedAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+        docs = await cursor.to_list(length=limit)
+        return [doc_to_model(doc, ExecutionResponse) for doc in docs], total
 
     @staticmethod
     async def complete_execution(
@@ -95,13 +104,20 @@ class ExecutionService:
         return doc_to_model(doc, ExecutionStepResponse)
 
     @staticmethod
-    async def get_steps(execution_id: str) -> list[ExecutionStepResponse]:
+    async def get_steps(
+        execution_id: str, *, skip: int = 0, limit: int = 100
+    ) -> tuple[list[ExecutionStepResponse], int]:
         db = get_db()
-        cursor = db.execution_steps.find({"executionId": execution_id}).sort(
-            "createdAt", 1
+        query = {"executionId": execution_id}
+        total = await db.execution_steps.count_documents(query)
+        cursor = (
+            db.execution_steps.find(query)
+            .sort("createdAt", 1)
+            .skip(skip)
+            .limit(limit)
         )
-        docs = await cursor.to_list(length=500)
-        return [doc_to_model(doc, ExecutionStepResponse) for doc in docs]
+        docs = await cursor.to_list(length=limit)
+        return [doc_to_model(doc, ExecutionStepResponse) for doc in docs], total
 
     @staticmethod
     async def count_active() -> int:

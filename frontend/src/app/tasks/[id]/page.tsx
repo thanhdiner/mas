@@ -65,16 +65,16 @@ export default function TaskDetailPage() {
 
       // Load execution history
       try {
-        const history = await api.executions.listByTask(taskId);
-        setExecHistory(history);
+        const historyRes = await api.executions.listByTask(taskId);
+        setExecHistory((historyRes as any)?.items ?? historyRes ?? []);
       } catch { /* no history */ }
 
       if (t.execution) {
         // If no active exec selected or it matches the latest, show latest
         if (!activeExecId || activeExecId === t.execution.id) {
           setActiveExecId(t.execution.id);
-          const s = await api.executions.getSteps(t.execution.id);
-          setSteps(s);
+          const stepsRes = await api.executions.getSteps(t.execution.id);
+          setSteps((stepsRes as any)?.items ?? stepsRes ?? []);
         }
       }
     } catch {
@@ -87,8 +87,8 @@ export default function TaskDetailPage() {
   const loadExecution = async (execId: string) => {
     setActiveExecId(execId);
     try {
-      const s = await api.executions.getSteps(execId);
-      setSteps(s);
+      const stepsRes = await api.executions.getSteps(execId);
+      setSteps((stepsRes as any)?.items ?? stepsRes ?? []);
     } catch { /* ignore */ }
   };
 

@@ -333,10 +333,18 @@ export const api = {
     get: (id: string) => fetchAPI<Execution>(`/executions/${id}`),
     getByTask: (taskId: string) =>
       fetchAPI<Execution>(`/executions/task/${taskId}`),
-    listByTask: (taskId: string) =>
-      fetchAPI<Execution[]>(`/executions/task/${taskId}/history`),
-    getSteps: (id: string) =>
-      fetchAPI<ExecutionStep[]>(`/executions/${id}/steps`),
+    listByTask: (taskId: string, params?: { page?: number; pageSize?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.pageSize) query.set("page_size", String(params.pageSize));
+      return fetchAPI<{ items: Execution[]; total: number; page: number; pageSize: number }>(`/executions/task/${taskId}/history?${query.toString()}`);
+    },
+    getSteps: (id: string, params?: { page?: number; pageSize?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.pageSize) query.set("page_size", String(params.pageSize));
+      return fetchAPI<{ items: ExecutionStep[]; total: number; page: number; pageSize: number }>(`/executions/${id}/steps?${query.toString()}`);
+    },
   },
   dashboard: {
     stats: () => fetchAPI<DashboardStats>("/dashboard/stats"),
