@@ -170,11 +170,20 @@ async def _wait_for_existing_task_id(
 
 @router.get(
     "",
-    response_model=list[WebhookResponse],
     dependencies=[Depends(get_current_active_user)],
 )
-async def list_webhooks():
-    return await WebhookService.list_webhooks()
+async def list_webhooks(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(15, ge=1, le=100)
+):
+    skip = (page - 1) * page_size
+    items, total = await WebhookService.list_webhooks(skip=skip, limit=page_size)
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size
+    }
 
 
 @router.get(

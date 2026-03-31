@@ -178,8 +178,9 @@ def _get_test_notification_metadata(
 
 class WebhookService:
     @staticmethod
-    async def list_webhooks(skip: int = 0, limit: int = 100) -> list[WebhookResponse]:
+    async def list_webhooks(skip: int = 0, limit: int = 100) -> tuple[list[WebhookResponse], int]:
         db = get_db()
+        total = await db.webhooks.count_documents({})
         cursor = db.webhooks.find({}).skip(skip).limit(limit).sort("createdAt", -1)
         docs = await cursor.to_list(length=limit)
 
@@ -187,7 +188,7 @@ class WebhookService:
         for doc in docs:
             agent_name = await _resolve_agent_name(doc.get("agentId"))
             responses.append(_doc_to_response(doc, agent_name=agent_name))
-        return responses
+        return responses, total
 
     @staticmethod
     async def get_webhook(webhook_id: str) -> Optional[WebhookResponse]:

@@ -450,7 +450,12 @@ export const api = {
   },
 
   webhooks: {
-    list: () => fetchAPI<Webhook[]>("/webhooks"),
+    list: (params?: { page?: number; pageSize?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.pageSize) query.set("page_size", String(params.pageSize));
+      return fetchAPI<{ items: Webhook[]; total: number; page: number; pageSize: number }>(`/webhooks?${query.toString()}`);
+    },
     create: (data: WebhookCreateInput) =>
       fetchAPI<WebhookSecret>("/webhooks", {
         method: "POST",

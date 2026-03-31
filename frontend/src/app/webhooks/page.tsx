@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import {
@@ -12,6 +13,8 @@ import {
   Copy,
   Download,
   Eye,
+  ChevronLeft,
+  ChevronRight,
   Pin,
   PinOff,
   PencilLine,
@@ -516,24 +519,46 @@ function buildJsonPreviewLines(
   return lines;
 }
 
-export default function WebhooksPage() {
+function WebhooksContent() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const pageSize = 10;
+
   const { data: queryData, isLoading: loading } = useQuery({
-    queryKey: ["webhooks"],
+    queryKey: ["webhooks", page],
     queryFn: () => Promise.all([
-      api.webhooks.list(),
+      api.webhooks.list({ page, pageSize }),
       api.agents.list(true),
       api.webhooks.getRuntimeHealth(),
     ]),
   });
+  
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [totalWebhooks, setTotalWebhooks] = useState(0);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [runtimeHealth, setRuntimeHealth] = useState<WebhookRuntimeHealth | null>(null);
+
+  const totalPages = Math.max(1, Math.ceil(totalWebhooks / pageSize));
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    } else {
+      params.delete("page");
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // Sync query data to local state (needed for local mutations)
   useEffect(() => {
     if (queryData) {
-      setWebhooks(queryData[0]);
+      const webhooksResult = queryData[0] as any;
+      setWebhooks(webhooksResult?.items ?? []);
+      setTotalWebhooks(webhooksResult?.total ?? 0);
       setAgents(queryData[1]);
       setRuntimeHealth(queryData[2]);
     }
