@@ -567,7 +567,12 @@ export const api = {
   },
 
   knowledge: {
-    list: () => fetchAPI<KnowledgeDoc[]>("/knowledge"),
+    list: (params?: { page?: number; pageSize?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.pageSize) query.set("page_size", String(params.pageSize));
+      return fetchAPI<{ items: KnowledgeDoc[]; total: number; page: number; pageSize: number }>(`/knowledge?${query.toString()}`);
+    },
     get: (id: string) => fetchAPI<KnowledgeDoc & { textPreview: string }>(`/knowledge/${id}`),
     upload: (file: File, name?: string, description?: string, tags?: string): Promise<KnowledgeDoc> => {
       const formData = new FormData();

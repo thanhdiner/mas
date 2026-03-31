@@ -7,7 +7,7 @@ Files stored to disk, metadata in MongoDB, embeddings in ChromaDB.
 import os
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 
 from app.database import get_db
 from app.config import get_settings
@@ -21,11 +21,16 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @router.get("")
-async def list_documents():
-    """List all knowledge documents."""
+async def list_documents(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(15, ge=1, le=100),
+):
+    """List knowledge documents with pagination."""
     db = get_db()
+    total = await db.knowledge.count_documents({})
+    skip = (page - 1) * page_size
     docs = []
-    async for doc in db.knowledge.find().sort("uploadedAt", -1):
+    async for doc in db.knowledge.find().sort("uploadedAt", -1).skip(skip).limit(page_size):
         docs.append({
             "id": str(doc["_id"]),
             "name": doc["name"],
@@ -38,7 +43,12 @@ async def list_documents():
             "vectorized": doc.get("vectorized", False),
             "uploadedAt": doc["uploadedAt"].isoformat() if doc.get("uploadedAt") else None,
         })
-    return docs
+    return {
+        "items": docs,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
 
 
 @router.post("/upload")

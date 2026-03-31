@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { Suspense, useState, useRef } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
@@ -13,6 +14,8 @@ import {
   Eye,
   X,
   Plus,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { api, KnowledgeDoc } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
@@ -51,12 +54,24 @@ const FILE_ICONS: Record<string, string> = {
   ".css": "🎨",
 };
 
-export default function KnowledgePage() {
+const PAGE_SIZE = 12;
+
+function KnowledgeContent() {
   const queryClient = useQueryClient();
-  const { data: docs = [], isLoading: loading } = useQuery({
-    queryKey: ["knowledge"],
-    queryFn: () => api.knowledge.list(),
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const page = parseInt(searchParams.get("page") || "1", 10);
+
+  const { data: queryData, isLoading: loading } = useQuery({
+    queryKey: ["knowledge", page],
+    queryFn: () => api.knowledge.list({ page, pageSize: PAGE_SIZE }),
   });
+
+  const docs: KnowledgeDoc[] = (queryData as any)?.items ?? [];
+  const total: number = (queryData as any)?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<(KnowledgeDoc & { textPreview?: string }) | null>(null);
@@ -70,6 +85,16 @@ export default function KnowledgePage() {
   const [uploadTags, setUploadTags] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    } else {
+      params.delete("page");
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   const handleUpload = async () => {
     if (!uploadFile) return;
@@ -183,6 +208,13 @@ export default function KnowledgePage() {
         </div>
       )}
 
+      {/* Total count */}
+      <div className="mb-4 flex items-center justify-between px-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest opacity-70" style={{ color: "var(--on-surface-dim)" }}>
+          Total <span className="font-extrabold text-accent-cyan">{total}</span> documents
+        </p>
+      </div>
+
       {/* Documents Grid */}
       {loading ? (
         <div className="text-center py-20 text-sm" style={{ color: "var(--on-surface-dim)" }}>Loading...</div>
@@ -198,77 +230,144 @@ export default function KnowledgePage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocs.map((doc, i) => (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDocs.map((doc, i) => (
+              <div
+                key={doc.id}
+                className="rounded-xl p-5 transition-all duration-200 hover:scale-[1.01] animate-slide-in group"
+                style={{
+                  background: "var(--surface-base)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  animationDelay: `${i * 40}ms`,
+                }}
+              >
+                {/* File icon + name */}
+                <div className="flex items-start gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
+                    style={{ background: "var(--surface-container)" }}
+                  >
+                    {FILE_ICONS[doc.fileType] || "📄"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-heading text-sm font-semibold text-foreground truncate">{doc.name}</h3>
+                    <p className="text-[11px] truncate" style={{ color: "var(--on-surface-dim)" }}>{doc.filename}</p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {doc.description && (
+                  <p className="text-xs mb-3 line-clamp-2 leading-relaxed" style={{ color: "var(--on-surface-dim)" }}>
+                    {doc.description}
+                  </p>
+                )}
+
+                {/* Tags */}
+                {doc.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {doc.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                        style={{
+                          background: "rgba(123,208,255,0.08)",
+                          color: "#7bd0ff",
+                          border: "1px solid rgba(123,208,255,0.12)",
+                        }}
+                      >
+                        <Tag className="w-2 h-2 inline mr-0.5 -mt-[1px]" /> {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Meta + actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-[10px]" style={{ color: "var(--on-surface-dim)" }}>
+                    <span className="flex items-center gap-1">
+                      <HardDrive className="w-2.5 h-2.5" /> {formatBytes(doc.fileSize)}
+                    </span>
+                    <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" onClick={() => handleView(doc.id)} className="text-on-surface-dim hover:text-foreground h-7 w-7 p-0">
+                      <Eye className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id)} className="text-on-surface-dim hover:text-[#ffb4ab] h-7 w-7 p-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && !searchQuery && (
             <div
-              key={doc.id}
-              className="rounded-xl p-5 transition-all duration-200 hover:scale-[1.01] animate-slide-in group"
+              className="flex items-center justify-between px-5 py-3 rounded-xl mt-6"
               style={{
-                background: "var(--surface-base)",
+                background: "var(--surface-high)",
                 border: "1px solid rgba(255,255,255,0.05)",
-                animationDelay: `${i * 40}ms`,
               }}
             >
-              {/* File icon + name */}
-              <div className="flex items-start gap-3 mb-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
-                  style={{ background: "var(--surface-container)" }}
+              <span
+                className="text-xs tabular-nums"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePageChange(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  {FILE_ICONS[doc.fileType] || "📄"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-heading text-sm font-semibold text-foreground truncate">{doc.name}</h3>
-                  <p className="text-[11px] truncate" style={{ color: "var(--on-surface-dim)" }}>{doc.filename}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {doc.description && (
-                <p className="text-xs mb-3 line-clamp-2 leading-relaxed" style={{ color: "var(--on-surface-dim)" }}>
-                  {doc.description}
-                </p>
-              )}
-
-              {/* Tags */}
-              {doc.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {doc.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 rounded-md text-xs font-medium transition-all ${
+                        page === pageNum
+                          ? "text-[#060e20]"
+                          : "text-on-surface-dim hover:text-foreground hover:bg-surface-highest"
+                      }`}
                       style={{
-                        background: "rgba(123,208,255,0.08)",
-                        color: "#7bd0ff",
-                        border: "1px solid rgba(123,208,255,0.12)",
+                        background:
+                          page === pageNum
+                            ? "linear-gradient(135deg, #7bd0ff, #008abb)"
+                            : "transparent",
                       }}
                     >
-                      <Tag className="w-2 h-2 inline mr-0.5 -mt-[1px]" /> {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Meta + actions */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-[10px]" style={{ color: "var(--on-surface-dim)" }}>
-                  <span className="flex items-center gap-1">
-                    <HardDrive className="w-2.5 h-2.5" /> {formatBytes(doc.fileSize)}
-                  </span>
-                  <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="sm" onClick={() => handleView(doc.id)} className="text-on-surface-dim hover:text-foreground h-7 w-7 p-0">
-                    <Eye className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id)} className="text-on-surface-dim hover:text-[#ffb4ab] h-7 w-7 p-0">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* Upload Dialog */}
@@ -400,5 +499,22 @@ export default function KnowledgePage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export default function KnowledgePage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="text-center py-20 text-sm"
+          style={{ color: "var(--on-surface-dim)" }}
+        >
+          Loading knowledge base...
+        </div>
+      }
+    >
+      <KnowledgeContent />
+    </Suspense>
   );
 }
