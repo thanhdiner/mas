@@ -2,7 +2,7 @@
 Route: /api/schedules — CRUD for scheduled triggers.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.dependencies import ValidObjectId
 from app.models.schedule import ScheduleCreate, ScheduleUpdate
@@ -25,9 +25,18 @@ def _doc_to_response(doc: dict) -> dict:
 
 
 @router.get("")
-async def list_all():
-    docs = await list_schedules()
-    return [_doc_to_response(d) for d in docs]
+async def list_all(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(15, ge=1, le=100)
+):
+    skip = (page - 1) * page_size
+    docs, total = await list_schedules(skip=skip, limit=page_size)
+    return {
+        "items": [_doc_to_response(d) for d in docs],
+        "total": total,
+        "page": page,
+        "pageSize": page_size
+    }
 
 
 @router.get("/{schedule_id}")

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import {
@@ -16,6 +17,8 @@ import {
   Search,
   Edit2,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { api, Schedule, ScheduleCreate, Agent } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
@@ -102,15 +105,25 @@ function formatLastRun(dateStr?: string | null) {
   });
 }
 
-export default function SchedulesPage() {
+function SchedulesContent() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const pageSize = 10;
+
   const { data, isLoading: loading } = useQuery({
-    queryKey: ["schedules"],
-    queryFn: () => Promise.all([api.schedules.list(), api.agents.list()]),
+    queryKey: ["schedules", page],
+    queryFn: () => Promise.all([api.schedules.list({ page, pageSize }), api.agents.list()]),
     refetchInterval: 5000,
   });
-  const schedules = data?.[0] ?? [];
+  
+  const schedulesResult = data?.[0] as any;
+  const schedules: Schedule[] = schedulesResult?.items ?? [];
+  const total = schedulesResult?.total ?? 0;
   const agents = data?.[1] ?? [];
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -180,6 +193,7 @@ export default function SchedulesPage() {
       }
       setShowCreate(false);
       resetForm();
+      resetForm();
       queryClient.invalidateQueries({ queryKey: ["schedules"] });
     } catch (err) {
       console.error(err);
@@ -218,6 +232,16 @@ export default function SchedulesPage() {
 
     return fuse.search(query).map((result) => result.item);
   }, [schedules, debouncedSearch]);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    } else {
+      params.delete("page");
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   return (
     <>
@@ -266,7 +290,7 @@ export default function SchedulesPage() {
             </>
           ) : (
             <>
-              Total <span className="font-extrabold text-accent-cyan">{schedules.length}</span> schedules
+              Total <span className="font-extrabold text-accent-cyan">{total}</span> schedules
             </>
           )}
         </p>
@@ -399,6 +423,71 @@ export default function SchedulesPage() {
               </div>
             );
           })}
+          
+          {/* Pagination */}
+          {totalPages > 1 && !search && (
+            <div
+              className="flex items-center justify-between px-5 py-3 rounded-xl mt-4"
+              style={{
+                background: "var(--surface-high)",
+                border: "1px solid rgba(255,255,255,0.05)",
+              }}
+            >
+              <span
+                className="text-xs tabular-nums"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePageChange(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 rounded-md text-xs font-medium transition-all ${
+                        page === pageNum
+                          ? "text-[#060e20]"
+                          : "text-on-surface-dim hover:text-foreground hover:bg-surface-highest"
+                      }`}
+                      style={{
+                        background:
+                          page === pageNum
+                            ? "linear-gradient(135deg, #7bd0ff, #008abb)"
+                            : "transparent",
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -580,5 +669,22 @@ export default function SchedulesPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export default function SchedulesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="text-center py-20 text-sm"
+          style={{ color: "var(--on-surface-dim)" }}
+        >
+          Loading schedules...
+        </div>
+      }
+    >
+      <SchedulesContent />
+    </Suspense>
   );
 }

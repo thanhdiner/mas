@@ -313,14 +313,21 @@ async def toggle_schedule(schedule_id: str, is_active: bool) -> Optional[dict]:
     return await update_schedule(schedule_id, {"isActive": is_active})
 
 
-async def list_schedules() -> list[dict]:
+async def list_schedules(skip: int = 0, limit: int = 50) -> tuple[list[dict], int]:
     db = get_db()
-    cursor = db.schedules.find({}).sort("createdAt", -1)
+    total = await db.schedules.count_documents({})
+    cursor = db.schedules.find({}).sort("createdAt", -1).skip(skip).limit(limit)
     docs = []
     async for doc in cursor:
         # Enrich with agent name
-        agent = await db.agents.find_one({"_id": ObjectId(doc["agentId"])}) if doc.get("agentId") else None
-        doc["agentName"] = agent.get("name", "Unknown") if agent else "Unknown"
+        if doc.get("agentId"):
+            try:
+                agent = await db.agents.find_one({"_id": ObjectId(doc["agentId"])})
+                doc["agentName"] = agent.get("name", "Unknown") if agent else "Unknown"
+            except Exception:
+                doc["agentName"] = "Unknown"
+        else:
+            doc["agentName"] = "Unknown"
 
         # Get next run time from APScheduler
         sched = get_scheduler()
@@ -332,7 +339,7 @@ async def list_schedules() -> list[dict]:
             doc["nextRunAt"] = None
 
         docs.append(doc)
-    return docs
+    return docs, total
 
 
 async def get_schedule(schedule_id: str) -> Optional[dict]:

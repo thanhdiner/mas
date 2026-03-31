@@ -527,7 +527,12 @@ export const api = {
   },
 
   schedules: {
-    list: () => fetchAPI<Schedule[]>("/schedules"),
+    list: (params?: { page?: number; pageSize?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set("page", String(params.page));
+      if (params?.pageSize) query.set("page_size", String(params.pageSize));
+      return fetchAPI<{ items: Schedule[]; total: number; page: number; pageSize: number }>(`/schedules?${query.toString()}`);
+    },
     get: (id: string) => fetchAPI<Schedule>(`/schedules/${id}`),
     create: (data: ScheduleCreate) =>
       fetchAPI<Schedule>("/schedules", {
