@@ -3706,3 +3706,20 @@ function WebhooksContent() {
     </>
   );
 }
+
+export default function WebhooksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="text-center py-20 text-sm"
+          style={{ color: "var(--on-surface-dim)" }}
+        >
+          Loading webhooks...
+        </div>
+      }
+    >
+      <WebhooksContent />
+    </Suspense>
+  );
+}
