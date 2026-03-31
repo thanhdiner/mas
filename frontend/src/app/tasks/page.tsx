@@ -1,9 +1,8 @@
 "use client";
 
 import { Suspense } from "react";
-import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   ListTodo,
   Plus,
@@ -32,21 +31,39 @@ const statusFilters: { label: string; value: TaskStatus | "all" }[] = [
 
 function TasksContent() {
   const searchParams = useSearchParams();
-  const initialStatus = searchParams.get("status") || "all";
-  const [filter, setFilter] = useState(initialStatus);
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const filter = searchParams.get("status") || "all";
+  const page = parseInt(searchParams.get("page") || "1", 10);
 
   const { tasks, total, isLoading: loading } = useTasks(
     filter !== "all"
-      ? { parent_only: true, status: filter, page, pageSize: PAGE_SIZE }
+      ? { parent_only: true, status: filter as TaskStatus, page, pageSize: PAGE_SIZE }
       : { parent_only: true, page, pageSize: PAGE_SIZE }
   );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const handleFilterChange = (value: string) => {
-    setFilter(value);
-    setPage(1); // Reset to page 1 when filter changes
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", value);
+    }
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    } else {
+      params.delete("page");
+    }
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   return (
@@ -206,7 +223,7 @@ function TasksContent() {
                 </span>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => handlePageChange(Math.max(1, page - 1))}
                     disabled={page === 1}
                     className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
                   >
@@ -227,7 +244,7 @@ function TasksContent() {
                     return (
                       <button
                         key={pageNum}
-                        onClick={() => setPage(pageNum)}
+                        onClick={() => handlePageChange(pageNum)}
                         className={`w-8 h-8 rounded-md text-xs font-medium transition-all ${
                           page === pageNum
                             ? "text-[#060e20]"
@@ -245,7 +262,7 @@ function TasksContent() {
                     );
                   })}
                   <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                     disabled={page === totalPages}
                     className="p-1.5 rounded-md transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
                   >
