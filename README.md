@@ -13,7 +13,7 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 - **Recursive Delegation**: Agents can dynamically create subtasks and assign them to other agents (with depth-limit safeguards).
 - **Extreme Performance**: Ultra-fast PyTest suite (~0.7s), optimized MongoDB indexing, and stable CI/CD pipelines.
 - **Distributed Task Queue**: Celery + Redis for horizontal scaling of agent workloads across multiple workers.
-- **Knowledge Base (RAG)**: Upload documents, auto-chunk & embed via ChromaDB, and enable agents to search with semantic vector similarity.
+- **Knowledge Base (RAG)**: Upload documents, auto-chunk & embed via ChromaDB, and enable agents to search via **Hybrid Search** (Semantic Vector + MongoDB Keyword matching) for robust multi-lingual and exact-keyword support.
 - **Command Center**: Real-time dashboard showing system throughput, active runs, and agent performance.
 - **Real-time Monitoring**: Follow execution steps via WebSocket-streamed logs with virtualized rendering and collapsible groups.
 - **Tonal Design System**: A "Synthetic Intelligence" UI featuring deep obsidian surfaces, glassmorphism, and neon functional accents.
