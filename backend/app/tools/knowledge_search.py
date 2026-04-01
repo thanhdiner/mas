@@ -32,14 +32,21 @@ async def _handle(query: str, max_results: int = 5, **_) -> str:
     1. Try ChromaDB vector (semantic) search first.
     2. Fall back to MongoDB text search if ChromaDB is unavailable.
     """
+    import logging
+    logger = logging.getLogger("knowledge_search")
+    
     max_results = min(max(max_results, 1), 10)
+    logger.warning(f"[KS] knowledge_search called with query='{query}', max_results={max_results}")
 
     # ── 1. Semantic search via ChromaDB ──────────────────────
     try:
         from app.services.vector_store import search as vector_search, is_available
 
-        if is_available():
+        avail = is_available()
+        logger.warning(f"[KS] ChromaDB is_available={avail}")
+        if avail:
             results = await vector_search(query=query, limit=max_results)
+            logger.warning(f"[KS] ChromaDB returned {len(results)} results")
             if results:
                 formatted = []
                 for r in results:
@@ -49,10 +56,12 @@ async def _handle(query: str, max_results: int = 5, **_) -> str:
                         "content": r.get("content", ""),
                     })
                 return json.dumps(formatted, ensure_ascii=False)
-    except ImportError:
-        pass
-    except Exception:
-        pass  # fall through to MongoDB fallback
+            else:
+                logger.warning("[KS] ChromaDB returned 0 results, falling through to MongoDB")
+    except ImportError as e:
+        logger.warning(f"[KS] ChromaDB import error: {e}")
+    except Exception as e:
+        logger.warning(f"[KS] ChromaDB search error: {e}")
 
     # ── 2. Fallback: MongoDB text / regex search ─────────────
     try:
@@ -60,8 +69,11 @@ async def _handle(query: str, max_results: int = 5, **_) -> str:
 
         db = get_db()
         if db is None:
+            logger.warning("[KS] MongoDB db is None!")
             return "Knowledge Base is unavailable (database not connected)."
 
+        logger.warning("[KS] Trying MongoDB fallback search...")
+        
         # First try $text index search (requires a text index on 'textContent')
         cursor = None
         try:
@@ -69,7 +81,8 @@ async def _handle(query: str, max_results: int = 5, **_) -> str:
                 {"$text": {"$search": query}},
                 {"score": {"$meta": "textScore"}, "name": 1, "textContent": 1},
             ).sort([("score", {"$meta": "textScore"})]).limit(max_results)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"[KS] $text search failed: {e}, trying regex")
             # No text index — fall back to regex
             import re
             safe_query = re.escape(query)
@@ -95,11 +108,14 @@ async def _handle(query: str, max_results: int = 5, **_) -> str:
                 "content": snippet,
             })
 
+        logger.warning(f"[KS] MongoDB returned {len(results)} results")
+        
         if results:
             return json.dumps(results, ensure_ascii=False)
         return "No relevant documents found in the Knowledge Base."
 
     except Exception as e:
+        logger.warning(f"[KS] MongoDB search failed: {e}")
         return f"Knowledge search failed: {e}"
 
 

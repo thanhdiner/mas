@@ -4,6 +4,7 @@ Allows users to test-drive an agent with a simple chat interface.
 Uses the unified LLM Provider for multi-model support.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -13,6 +14,7 @@ from app.services.agent_service import AgentService
 from app.services.llm_provider import get_llm_provider, AVAILABLE_MODELS
 from app.tools.registry import tool_registry
 
+logger = logging.getLogger("playground")
 router = APIRouter(prefix="/playground", tags=["Playground"])
 settings = get_settings()
 
@@ -116,13 +118,16 @@ async def chat(req: PlaygroundRequest):
                             # Apply tool config overrides from agent & global
                             from app.database import get_db
                             current_db = get_db()
-                            global_cfg = await current_db.tool_settings.find_one({"name": fn_name}) if current_db else {}
+                            global_cfg = await current_db.tool_settings.find_one({"name": fn_name}) if current_db is not None else {}
                             global_settings = (global_cfg or {}).get("settings", {})
                             agent_tool_config = getattr(agent, "toolConfig", {}).get(fn_name, {})
                             combined_args = {**global_settings, **agent_tool_config, **args}
 
+                            logger.warning(f"[PLAYGROUND] Calling tool '{fn_name}' with args: {combined_args}")
                             tool_result = await handler(**combined_args)
+                            logger.warning(f"[PLAYGROUND] Tool '{fn_name}' returned: {str(tool_result)[:500]}")
                         except Exception as exc:
+                            logger.warning(f"[PLAYGROUND] Tool '{fn_name}' exception: {exc}")
                             tool_result = f"Error executing tool: {exc}"
 
                     messages.append({
