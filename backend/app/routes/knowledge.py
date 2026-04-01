@@ -12,6 +12,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from app.database import get_db
 from app.config import get_settings
 from app.services import vector_store
+from app.services.text_extractor import extract_text
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Base"])
 settings = get_settings()
@@ -79,12 +80,8 @@ async def upload_document(
     with open(filepath, "wb") as f:
         f.write(content)
     
-    # Extract text content for search
-    text_content = ""
-    try:
-        text_content = content.decode("utf-8", errors="ignore")
-    except Exception:
-        text_content = ""
+    # Extract text content for search (handles PDF, CSV, JSON, plain text)
+    text_content = extract_text(content, file.filename or f"document{ext}")
     
     doc_name = name or os.path.splitext(file.filename or "")[0]
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
@@ -233,42 +230,54 @@ async def search_knowledge(q: str = "", limit: int = 5):
 
 @router.post("/{doc_id}/reindex")
 async def reindex_document(doc_id: str):
-    """Re-embed a document in the vector store."""
+    """Re-extract text from the original file, then re-embed in the vector store."""
     from bson import ObjectId
     db = get_db()
     doc = await db.knowledge.find_one({"_id": ObjectId(doc_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if not vector_store.is_available():
-        raise HTTPException(status_code=503, detail="Vector store not available")
-
+    # Re-extract text from the original file on disk
+    filepath = doc.get("filepath", "")
+    filename = doc.get("filename", "document.txt")
     text_content = doc.get("textContent", "")
+
+    if filepath and os.path.exists(filepath):
+        with open(filepath, "rb") as f:
+            file_bytes = f.read()
+        text_content = extract_text(file_bytes, filename)
+
+        # Update text content in database
+        await db.knowledge.update_one(
+            {"_id": ObjectId(doc_id)},
+            {"$set": {"textContent": text_content[:50000]}},
+        )
+
     if not text_content:
-        raise HTTPException(status_code=400, detail="Document has no text content")
+        raise HTTPException(status_code=400, detail="Could not extract text from document")
 
-    # Remove old embeddings
-    await vector_store.remove_document(doc_id)
-
-    # Re-embed
-    chunk_count = await vector_store.add_document(
-        doc_id=doc_id,
-        text=text_content,
-        metadata={
-            "name": doc["name"],
-            "filename": doc.get("filename", ""),
-            "fileType": doc.get("fileType", ""),
-        },
-    )
-
-    await db.knowledge.update_one(
-        {"_id": ObjectId(doc_id)},
-        {"$set": {"chunkCount": chunk_count, "vectorized": True}},
-    )
+    # Re-embed in vector store
+    chunk_count = 0
+    if vector_store.is_available():
+        await vector_store.remove_document(doc_id)
+        chunk_count = await vector_store.add_document(
+            doc_id=doc_id,
+            text=text_content,
+            metadata={
+                "name": doc["name"],
+                "filename": filename,
+                "fileType": doc.get("fileType", ""),
+            },
+        )
+        await db.knowledge.update_one(
+            {"_id": ObjectId(doc_id)},
+            {"$set": {"chunkCount": chunk_count, "vectorized": True}},
+        )
 
     return {
-        "message": "Document re-indexed",
+        "message": "Document re-extracted and re-indexed",
         "chunkCount": chunk_count,
+        "textPreview": text_content[:500],
     }
 
 

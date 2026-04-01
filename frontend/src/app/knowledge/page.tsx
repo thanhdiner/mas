@@ -16,6 +16,7 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { api, KnowledgeDoc } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
@@ -136,6 +137,16 @@ function KnowledgeContent() {
       setSearchResults(results);
     } catch {}
     setSearching(false);
+  };
+
+  const handleReindex = async (id: string) => {
+    try {
+      const result = await api.knowledge.reindex(id);
+      alert(`Re-indexed successfully! Extracted ${result.chunkCount} chunks.`);
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Reindex failed");
+    }
   };
 
   const filteredDocs = searchQuery
@@ -291,10 +302,13 @@ function KnowledgeContent() {
                     <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" onClick={() => handleView(doc.id)} className="text-on-surface-dim hover:text-foreground h-7 w-7 p-0">
+                    <Button variant="ghost" size="sm" onClick={() => handleView(doc.id)} className="text-on-surface-dim hover:text-foreground h-7 w-7 p-0" title="Preview">
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id)} className="text-on-surface-dim hover:text-[#ffb4ab] h-7 w-7 p-0">
+                    <Button variant="ghost" size="sm" onClick={() => handleReindex(doc.id)} className="text-on-surface-dim hover:text-accent-cyan h-7 w-7 p-0" title="Re-extract & Reindex">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id)} className="text-on-surface-dim hover:text-[#ffb4ab] h-7 w-7 p-0" title="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>

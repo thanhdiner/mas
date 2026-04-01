@@ -595,6 +595,7 @@ export const api = {
     },
     delete: (id: string) => fetchAPI<{ message: string }>(`/knowledge/${id}`, { method: "DELETE" }),
     search: (q: string) => fetchAPI<{ id: string; name: string; snippet: string }[]>(`/knowledge/search/query?q=${encodeURIComponent(q)}`),
+    reindex: (id: string) => fetchAPI<{ message: string; chunkCount: number; textPreview: string }>(`/knowledge/${id}/reindex`, { method: "POST" }),
   },
 
   settings: {
