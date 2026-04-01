@@ -501,12 +501,12 @@ function KnowledgeContent() {
               )}
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-on-surface-dim mb-2">Content Preview</h4>
-                <pre
-                  className="text-xs p-4 rounded-lg font-mono overflow-auto whitespace-pre-wrap max-h-80 leading-relaxed"
+                <div
+                  className="text-[13px] p-4 rounded-lg font-sans overflow-auto whitespace-pre-wrap max-h-80 leading-relaxed"
                   style={{ background: "var(--surface-container)", color: "var(--on-surface-dim)" }}
                 >
                   {selectedDoc.textPreview || "No preview available."}
-                </pre>
+                </div>
               </div>
             </div>
           )}
