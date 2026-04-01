@@ -23,6 +23,13 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PROVIDERS = [
   {
@@ -392,12 +399,10 @@ export default function SettingsPage() {
                     >
                       Default Provider
                     </Label>
-                    <select
-                      id="defaultProvider"
+                    <Select
                       value={defaultProvider}
-                      onChange={(e) => {
-                        const newProvider = e.target.value;
-                        setDefaultProvider(newProvider);
+                      onValueChange={(newProvider) => {
+                        setDefaultProvider(newProvider || "");
                         const firstModel = availableModels.find(
                           (m) => m.provider === newProvider
                         );
@@ -405,16 +410,23 @@ export default function SettingsPage() {
                           setDefaultModel(firstModel.id);
                         }
                       }}
-                      className="w-full h-11 px-3 rounded-lg text-sm bg-surface-lowest text-foreground border-0 outline-none focus:ring-2 focus:ring-accent-cyan/30"
-                      style={{ background: "var(--surface-lowest)", color: "var(--foreground)" }}
                     >
-                      <option value="openai">OpenAI</option>
-                      <option value="anthropic">Anthropic</option>
-                      <option value="gemini">Google Gemini</option>
-                      <option value="deepseek">DeepSeek</option>
-                      <option value="groq">Groq</option>
-                      <option value="together">Together AI</option>
-                    </select>
+                      <SelectTrigger
+                        id="defaultProvider"
+                        className="w-full h-11 px-3 border-0 rounded-lg text-sm focus:ring-2 focus:ring-accent-cyan/30"
+                        style={{ background: "var(--surface-lowest)", color: "var(--foreground)" }}
+                      >
+                        <SelectValue placeholder="Select Provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="anthropic">Anthropic</SelectItem>
+                        <SelectItem value="gemini">Google Gemini</SelectItem>
+                        <SelectItem value="deepseek">DeepSeek</SelectItem>
+                        <SelectItem value="groq">Groq</SelectItem>
+                        <SelectItem value="together">Together AI</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label
@@ -424,24 +436,30 @@ export default function SettingsPage() {
                     >
                       Default Model
                     </Label>
-                    <select
-                      id="defaultModel"
+                    <Select
                       value={defaultModel}
-                      onChange={(e) => setDefaultModel(e.target.value)}
-                      className="w-full h-11 px-3 rounded-lg text-sm bg-surface-lowest text-foreground border-0 outline-none focus:ring-2 focus:ring-accent-cyan/30"
-                      style={{ background: "var(--surface-lowest)", color: "var(--foreground)" }}
+                      onValueChange={(newModel) => setDefaultModel(newModel || "")}
                     >
-                      {availableModels
-                        .filter((m) => m.provider === defaultProvider)
-                        .map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} ({m.id})
-                          </option>
-                        ))}
-                      {availableModels.filter((m) => m.provider === defaultProvider).length === 0 && (
-                        <option value={defaultModel}>{defaultModel}</option>
-                      )}
-                    </select>
+                      <SelectTrigger
+                        id="defaultModel"
+                        className="w-full h-11 px-3 border-0 rounded-lg text-sm focus:ring-2 focus:ring-accent-cyan/30"
+                        style={{ background: "var(--surface-lowest)", color: "var(--foreground)" }}
+                      >
+                        <SelectValue placeholder="Select Model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableModels
+                          .filter((m) => m.provider === defaultProvider)
+                          .map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name} <span className="opacity-50 text-xs ml-1">({m.id})</span>
+                            </SelectItem>
+                          ))}
+                        {availableModels.filter((m) => m.provider === defaultProvider).length === 0 && (
+                          <SelectItem value={defaultModel}>{defaultModel}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
