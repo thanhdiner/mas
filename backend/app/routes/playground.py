@@ -51,32 +51,105 @@ async def chat(req: PlaygroundRequest):
     for m in req.messages:
         messages.append({"role": m.role, "content": m.content})
 
-    try:
-        response = await llm.chat(
-            model=model,
-            messages=messages,
-            tools=tools if tools else None,
-            temperature=0.7,
-            max_tokens=2048,
-            provider=provider,
-        )
+    import json
 
-        # Convert tool calls
-        tool_results = []
-        if response.message.tool_calls:
-            for tc in response.message.tool_calls:
-                tool_results.append({
-                    "name": tc.name,
-                    "arguments": tc.arguments,
-                    "id": tc.id,
+    step_count = 0
+    max_steps = 5
+    all_tool_calls_history = []
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+    try:
+        while step_count < max_steps:
+            step_count += 1
+            response = await llm.chat(
+                model=model,
+                messages=messages,
+                tools=tools if tools else None,
+                temperature=0.7,
+                max_tokens=2048,
+                provider=provider,
+            )
+
+            # Accumulate usage
+            if response.usage:
+                total_usage["prompt_tokens"] += response.usage.get("prompt_tokens", 0)
+                total_usage["completion_tokens"] += response.usage.get("completion_tokens", 0)
+                total_usage["total_tokens"] += response.usage.get("total_tokens", 0)
+
+            if response.message.tool_calls:
+                # Append assistant tool call request to history
+                tool_calls_for_msg = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.name,
+                            "arguments": tc.arguments,
+                        },
+                    }
+                    for tc in response.message.tool_calls
+                ]
+                messages.append({
+                    "role": "assistant",
+                    "content": response.message.content or "",
+                    "tool_calls": tool_calls_for_msg,
                 })
 
+                for tc in response.message.tool_calls:
+                    fn_name = tc.name
+                    all_tool_calls_history.append({
+                        "name": tc.name,
+                        "arguments": tc.arguments,
+                        "id": tc.id,
+                    })
+
+                    try:
+                        args = json.loads(tc.arguments or "{}")
+                    except Exception:
+                        args = {}
+
+                    handler = tool_registry.get_handler(fn_name)
+                    if handler is None:
+                        tool_result = f"ERROR: Unknown tool '{fn_name}'."
+                    else:
+                        try:
+                            # Apply tool config overrides from agent & global
+                            from app.database import get_db
+                            current_db = get_db()
+                            global_cfg = await current_db.tool_settings.find_one({"name": fn_name}) if current_db else {}
+                            global_settings = (global_cfg or {}).get("settings", {})
+                            agent_tool_config = getattr(agent, "toolConfig", {}).get(fn_name, {})
+                            combined_args = {**global_settings, **agent_tool_config, **args}
+
+                            tool_result = await handler(**combined_args)
+                        except Exception as exc:
+                            tool_result = f"Error executing tool: {exc}"
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": tool_result or "Tool completed but returned no result.",
+                    })
+                continue
+
+            # No more tool calls, return final response
+            final_content = response.message.content or ""
+            # If step limit reached but still wants to loop, force stop
+            return {
+                "role": "assistant",
+                "content": final_content,
+                "toolCalls": list({tc["id"]: tc for tc in all_tool_calls_history}.values()),  # Unique
+                "model": model,
+                "usage": total_usage,
+            }
+
+        # Fallback if max steps reached
         return {
             "role": "assistant",
-            "content": response.message.content or "",
-            "toolCalls": tool_results,
+            "content": "⚠️ Exceeded maximum steps in Playground loop.",
+            "toolCalls": all_tool_calls_history,
             "model": model,
-            "usage": response.usage,
+            "usage": total_usage,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
