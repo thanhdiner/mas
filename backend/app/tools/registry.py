@@ -86,6 +86,7 @@ def _bootstrap():
         "app.tools.gmail",
         "app.tools.execute_code",
         "app.tools.write_file",
+        "app.tools.knowledge_search",
     ]
     for mod in modules:
         try:
