@@ -79,7 +79,6 @@ export function useCanvasGraph() {
       })
       .catch((err: Error) => setLoadError(err.message || "Failed to load agents."))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ---- listen for dirty events from custom edge delete ---- */
@@ -105,7 +104,6 @@ export function useCanvasGraph() {
         return { ...e, animated: connected, selected: false };
       })
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodeId, setNodes, setEdges]);
 
   /* ---- connection validation (prevent cycles) ---- */

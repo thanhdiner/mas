@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.dependencies import ValidObjectId
 from app.errors import NotFoundError
-from app.models.execution import ExecutionResponse, ExecutionStepResponse
+from app.models.execution import ExecutionResponse
 from app.services.execution_service import ExecutionService
 
 router = APIRouter(prefix="/executions", tags=["Executions"])

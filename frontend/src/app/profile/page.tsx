@@ -219,6 +219,7 @@ export default function ProfilePage() {
             <div className="relative mt-2 mb-4 group shrink-0">
               {(optimisticAvatar || user.avatar_url) ? (
                 <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={optimisticAvatar || user.avatar_url!}
                     alt="Avatar"

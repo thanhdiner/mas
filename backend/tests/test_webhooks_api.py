@@ -232,7 +232,10 @@ def test_webhooks_api_create_list_and_rotate_token(client, monkeypatch):
         list_response = client.get("/api/webhooks")
 
         assert list_response.status_code == 200
-        assert list_response.json() == [
+        list_payload = list_response.json()
+        assert list_payload["page"] == 1
+        assert list_payload["total"] == 1
+        assert list_payload["data"] == [
             {
                 "id": create_payload["id"],
                 "name": "Stripe Paid",

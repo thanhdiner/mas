@@ -87,12 +87,17 @@ function formatNextRunStr(dateStr?: string | null, forceNowMs?: number) {
 }
 
 function NextRunCountdown({ dateStr }: { dateStr?: string | null }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
+    setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (now === null) {
+    return <span className="opacity-0">Loading</span>;
+  }
 
   // Suppress hydration warning because client time differs from server time
   return <span suppressHydrationWarning>{formatNextRunStr(dateStr, now)}</span>;
