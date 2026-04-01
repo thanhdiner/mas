@@ -27,96 +27,110 @@ PARAMS = {
 
 async def _handle(query: str, max_results: int = 5, **_) -> str:
     """
-    Search the Knowledge Base.
-
-    1. Try ChromaDB vector (semantic) search first.
-    2. Fall back to MongoDB text search if ChromaDB is unavailable.
+    Hybrid search: always runs BOTH vector + keyword search, then merges results.
+    This compensates for the English-only embedding model on Vietnamese content.
     """
     import logging
+    import re
     logger = logging.getLogger("knowledge_search")
-    
-    max_results = min(max(max_results, 1), 10)
-    logger.warning(f"[KS] knowledge_search called with query='{query}', max_results={max_results}")
 
-    # ── 1. Semantic search via ChromaDB ──────────────────────
+    max_results = min(max(max_results, 1), 10)
+    logger.warning(f"[KS] query='{query}', max_results={max_results}")
+
+    all_results = []  # Collect results from all strategies
+
+    # ── Strategy 1: ChromaDB vector search ───────────────────
     try:
         from app.services.vector_store import search as vector_search, is_available
-
-        avail = is_available()
-        logger.warning(f"[KS] ChromaDB is_available={avail}")
-        if avail:
-            results = await vector_search(query=query, limit=max_results)
-            logger.warning(f"[KS] ChromaDB returned {len(results)} results")
-            if results:
-                formatted = []
-                for r in results:
-                    formatted.append({
-                        "source": r.get("doc_name", "Unknown"),
-                        "relevance": r.get("similarity", 0),
-                        "content": r.get("content", ""),
-                    })
-                return json.dumps(formatted, ensure_ascii=False)
-            else:
-                logger.warning("[KS] ChromaDB returned 0 results, falling through to MongoDB")
-    except ImportError as e:
-        logger.warning(f"[KS] ChromaDB import error: {e}")
+        if is_available():
+            vr = await vector_search(query=query, limit=max_results)
+            logger.warning(f"[KS] ChromaDB: {len(vr)} results")
+            for r in vr:
+                all_results.append({
+                    "source": r.get("doc_name", "Unknown"),
+                    "relevance": round(r.get("similarity", 0), 4),
+                    "content": r.get("content", ""),
+                    "_strategy": "vector",
+                })
     except Exception as e:
-        logger.warning(f"[KS] ChromaDB search error: {e}")
+        logger.warning(f"[KS] ChromaDB error: {e}")
 
-    # ── 2. Fallback: MongoDB text / regex search ─────────────
+    # ── Strategy 2: MongoDB keyword search (split into words) ─
     try:
         from app.database import get_db
-
         db = get_db()
-        if db is None:
-            logger.warning("[KS] MongoDB db is None!")
-            return "Knowledge Base is unavailable (database not connected)."
+        if db is not None:
+            # Split query into individual words (min 2 chars each)
+            words = [w.strip() for w in query.split() if len(w.strip()) >= 2]
+            logger.warning(f"[KS] MongoDB keyword search with words: {words}")
 
-        logger.warning("[KS] Trying MongoDB fallback search...")
-        
-        # First try $text index search (requires a text index on 'textContent')
-        cursor = None
-        try:
-            cursor = db.knowledge.find(
-                {"$text": {"$search": query}},
-                {"score": {"$meta": "textScore"}, "name": 1, "textContent": 1},
-            ).sort([("score", {"$meta": "textScore"})]).limit(max_results)
-        except Exception as e:
-            logger.warning(f"[KS] $text search failed: {e}, trying regex")
-            # No text index — fall back to regex
-            import re
-            safe_query = re.escape(query)
-            cursor = db.knowledge.find(
-                {
-                    "$or": [
-                        {"name": {"$regex": safe_query, "$options": "i"}},
-                        {"textContent": {"$regex": safe_query, "$options": "i"}},
-                        {"description": {"$regex": safe_query, "$options": "i"}},
-                        {"tags": {"$regex": safe_query, "$options": "i"}},
-                    ]
-                },
-                {"name": 1, "textContent": 1, "description": 1},
-            ).limit(max_results)
+            if words:
+                # Build OR conditions: match ANY word in textContent
+                or_conditions = []
+                for word in words:
+                    safe = re.escape(word)
+                    or_conditions.append({"textContent": {"$regex": safe, "$options": "i"}})
+                    or_conditions.append({"name": {"$regex": safe, "$options": "i"}})
+                    or_conditions.append({"description": {"$regex": safe, "$options": "i"}})
 
-        results = []
-        async for doc in cursor:
-            text = doc.get("textContent", "") or doc.get("description", "")
-            # Return a meaningful snippet (first 600 chars around the match)
-            snippet = _extract_snippet(text, query, window=600)
-            results.append({
-                "source": doc.get("name", "Unknown"),
-                "content": snippet,
-            })
+                cursor = db.knowledge.find(
+                    {"$or": or_conditions},
+                    {"name": 1, "textContent": 1, "description": 1},
+                ).limit(5)
 
-        logger.warning(f"[KS] MongoDB returned {len(results)} results")
-        
-        if results:
-            return json.dumps(results, ensure_ascii=False)
+                async for doc in cursor:
+                    text = doc.get("textContent", "") or ""
+                    # Extract snippets around EACH matched word
+                    snippets = []
+                    seen_positions = set()
+                    for word in words:
+                        positions = _find_all_positions(text.lower(), word.lower())
+                        for pos in positions[:2]:  # Max 2 matches per word
+                            # Skip if too close to a previous snippet
+                            if any(abs(pos - sp) < 300 for sp in seen_positions):
+                                continue
+                            seen_positions.add(pos)
+                            snippet = _extract_snippet(text, word, window=400)
+                            if snippet and snippet not in snippets:
+                                snippets.append(snippet)
+                            if len(snippets) >= 3:
+                                break
+
+                    if not snippets:
+                        snippets = [text[:600]]
+
+                    for snippet in snippets:
+                        all_results.append({
+                            "source": doc.get("name", "Unknown"),
+                            "relevance": 0.7,  # keyword match confidence
+                            "content": snippet,
+                            "_strategy": "keyword",
+                        })
+
+                logger.warning(f"[KS] MongoDB: {len([r for r in all_results if r['_strategy'] == 'keyword'])} keyword results")
+    except Exception as e:
+        logger.warning(f"[KS] MongoDB error: {e}")
+
+    # ── Merge & Deduplicate ───────────────────────────────────
+    if not all_results:
         return "No relevant documents found in the Knowledge Base."
 
-    except Exception as e:
-        logger.warning(f"[KS] MongoDB search failed: {e}")
-        return f"Knowledge search failed: {e}"
+    # Remove duplicate content (keep highest relevance)
+    unique = {}
+    for r in all_results:
+        key = r["content"][:100]  # Deduplicate by first 100 chars
+        if key not in unique or r["relevance"] > unique[key]["relevance"]:
+            unique[key] = r
+
+    # Sort by relevance, take top N
+    final = sorted(unique.values(), key=lambda x: x["relevance"], reverse=True)[:max_results]
+
+    # Clean internal fields
+    for r in final:
+        r.pop("_strategy", None)
+
+    logger.warning(f"[KS] Returning {len(final)} merged results")
+    return json.dumps(final, ensure_ascii=False)
 
 
 def _extract_snippet(text: str, query: str, window: int = 600) -> str:
@@ -139,13 +153,27 @@ def _extract_snippet(text: str, query: str, window: int = 600) -> str:
     return snippet
 
 
+def _find_all_positions(text: str, word: str) -> list[int]:
+    """Find all starting positions of *word* in *text*."""
+    positions = []
+    start = 0
+    while True:
+        idx = text.find(word, start)
+        if idx == -1:
+            break
+        positions.append(idx)
+        start = idx + 1
+    return positions
+
 tool_registry.register(
     name="knowledge_search",
     description=(
-        "Search the internal Knowledge Base for relevant information. "
-        "Use this tool when the task mentions internal documents, company policies, "
-        "uploaded files, or any domain-specific knowledge that was previously provided. "
-        "Returns matching passages from uploaded documents."
+        "Search the internal Knowledge Base for relevant information from uploaded documents. "
+        "IMPORTANT QUERY TIPS: Use specific Vietnamese keywords, not vague questions. "
+        "For example, instead of 'ai dạy môn này', search for 'giảng viên' or 'giáo viên' or 'PGS TS'. "
+        "Instead of 'nội dung gì', search for the actual topic keywords. "
+        "You can call this tool multiple times with different keywords to find relevant passages. "
+        "The search works best with concrete nouns and proper names."
     ),
     parameters=PARAMS,
     handler=_handle,
