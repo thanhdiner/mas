@@ -35,10 +35,12 @@ async def chat(req: PlaygroundRequest):
         raise HTTPException(status_code=404, detail="Agent not found")
 
     llm = get_llm_provider()
+    from app.services.system_settings_service import SystemSettingsService
+    sys_llm = await SystemSettingsService.get_llm_settings()
 
     # Determine model: request override > agent setting > global default
-    model = req.model or getattr(agent, "model", None) or settings.LLM_MODEL or settings.OPENAI_MODEL
-    provider = getattr(agent, "provider", None)
+    model = req.model or getattr(agent, "model", None) or sys_llm.get("default_model") or settings.LLM_MODEL or settings.OPENAI_MODEL
+    provider = getattr(agent, "provider", None) or sys_llm.get("default_provider")
 
     # Build tool definitions for this agent
     tools = []
