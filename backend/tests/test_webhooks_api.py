@@ -235,7 +235,7 @@ def test_webhooks_api_create_list_and_rotate_token(client, monkeypatch):
         list_payload = list_response.json()
         assert list_payload["page"] == 1
         assert list_payload["total"] == 1
-        assert list_payload["data"] == [
+        assert list_payload["items"] == [
             {
                 "id": create_payload["id"],
                 "name": "Stripe Paid",
