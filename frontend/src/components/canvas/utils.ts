@@ -43,13 +43,6 @@ export function computeLayout(
   savedPositions: Record<string, { x: number; y: number }>
 ) {
   const knownIds = new Set(agents.map((a) => a.id));
-  const allSaved = agents.length > 0 && agents.every((a) => savedPositions[a.id]);
-  if (allSaved) {
-    return agents.reduce((acc, a) => {
-      acc[a.id] = savedPositions[a.id];
-      return acc;
-    }, {} as Record<string, { x: number; y: number }>);
-  }
 
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
   g.setGraph({
@@ -74,8 +67,12 @@ export function computeLayout(
 
   const positions: Record<string, { x: number; y: number }> = {};
   for (const agent of agents) {
-    const n = g.node(agent.id);
-    positions[agent.id] = { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 };
+    if (savedPositions[agent.id]) {
+      positions[agent.id] = savedPositions[agent.id];
+    } else {
+      const n = g.node(agent.id);
+      positions[agent.id] = { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 };
+    }
   }
   return positions;
 }
