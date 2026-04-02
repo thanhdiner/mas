@@ -37,9 +37,10 @@ export function AgentHierarchyCanvas() {
 
   /* ---------- render ---------- */
   return (
-    <>
+    <div className="flex flex-col h-[calc(100vh-2rem)]">
       <PageHeader
         title="Agent Canvas"
+        className="mb-3 shrink-0"
         description="Visual workflow — connect agents to define delegation chains."
         actions={
           <>
@@ -121,11 +122,13 @@ export function AgentHierarchyCanvas() {
         </div>
       ) : (
         <div 
-          className="relative overflow-hidden rounded-2xl border border-white/5"
-          style={{ height: "calc(100vh - 190px)", minHeight: "560px" }}
+          className="relative overflow-hidden rounded-2xl border border-white/5 flex-1 min-h-[400px]"
         >
           {/* ---- Canvas ---- */}
-          <div className="w-full h-full" style={{ background: "#1a1d26" }}>
+          <div 
+            className="w-full h-full relative" 
+            style={{ background: "#14151a" }}
+          >
             {/* CSS for edge delete button hover */}
             <style>{`
               .react-flow__edge:hover .edge-delete-btn,
@@ -175,9 +178,9 @@ export function AgentHierarchyCanvas() {
             >
               <Background
                 variant={BackgroundVariant.Dots}
-                gap={16}
-                size={1}
-                color="rgba(255,255,255,0.04)"
+                gap={20}
+                size={1.5}
+                color="rgba(255,255,255,0.06)"
               />
               <Controls
                 showInteractive={false}
@@ -352,6 +355,6 @@ export function AgentHierarchyCanvas() {
           background: rgba(255,255,255,0.2);
         }
       `}</style>
-    </>
+    </div>
   );
 }
