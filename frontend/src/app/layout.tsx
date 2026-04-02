@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { cookies } from "next/headers";
 
 import "./globals.css";
 import { AppLayoutWrapper } from "@/components/app-layout-wrapper";
@@ -72,11 +73,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "true";
+
   return (
     <html
       lang="en"
@@ -86,7 +90,7 @@ export default function RootLayout({
       <head suppressHydrationWarning />
       <body className="min-h-full flex" suppressHydrationWarning>
         <QueryProvider>
-          <AppLayoutWrapper>{children}</AppLayoutWrapper>
+          <AppLayoutWrapper defaultCollapsed={defaultCollapsed}>{children}</AppLayoutWrapper>
         </QueryProvider>
       </body>
     </html>

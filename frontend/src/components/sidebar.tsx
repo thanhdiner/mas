@@ -75,11 +75,9 @@ const navGroups = [
 export function Sidebar({ 
   collapsed, 
   setCollapsed, 
-  isLoaded 
 }: { 
   collapsed: boolean; 
   setCollapsed: (v: boolean) => void; 
-  isLoaded: boolean;
 }) {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -101,23 +99,12 @@ export function Sidebar({
 
   // Save to localStorage
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("sidebar_open_groups", JSON.stringify(openGroups));
-    }
-  }, [openGroups, isLoaded]);
+    localStorage.setItem("sidebar_open_groups", JSON.stringify(openGroups));
+  }, [openGroups]);
 
   const toggleGroup = (id: string) => {
     setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
-
-  if (!isLoaded) {
-    return (
-      <aside
-        className={`fixed left-0 top-0 h-screen z-50 flex flex-col transition-all duration-300 w-[72px] lg:w-[260px]`}
-        style={{ background: "var(--surface-low)" }}
-      />
-    );
-  }
 
   return (
     <aside
