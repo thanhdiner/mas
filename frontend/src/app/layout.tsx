@@ -6,6 +6,7 @@ import "./globals.css";
 import { AppLayoutWrapper } from "@/components/app-layout-wrapper";
 import { QueryProvider } from "@/components/query-provider";
 import { absoluteUrl, siteConfig } from "@/lib/site";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -91,6 +92,7 @@ export default async function RootLayout({
       <body className="min-h-full flex" suppressHydrationWarning>
         <QueryProvider>
           <AppLayoutWrapper defaultCollapsed={defaultCollapsed}>{children}</AppLayoutWrapper>
+          <Toaster theme="dark" position="bottom-right" />
         </QueryProvider>
       </body>
     </html>

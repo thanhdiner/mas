@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
@@ -10,12 +10,16 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  Trash2,
+  Archive,
 } from "lucide-react";
 import type { TaskStatus } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 15;
 
@@ -37,7 +41,9 @@ function TasksContent() {
   const filter = searchParams.get("status") || "all";
   const page = parseInt(searchParams.get("page") || "1", 10);
 
-  const { tasks, total, isLoading: loading } = useTasks(
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const { tasks, total, isLoading: loading, mutate } = useTasks(
     filter !== "all"
       ? { parent_only: true, status: filter as TaskStatus, page, pageSize: PAGE_SIZE }
       : { parent_only: true, page, pageSize: PAGE_SIZE }
@@ -64,6 +70,78 @@ function TasksContent() {
       params.delete("page");
     }
     router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleArchive = async (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+
+    // Optimistically update
+    mutate(
+      (currentData: any) => {
+        if (!currentData?.items) return currentData;
+        return {
+          ...currentData,
+          items: currentData.items.filter((t: any) => t.id !== taskId),
+          total: Math.max(0, currentData.total - 1),
+        };
+      },
+      false // false = don't revalidate immediately, just set cache
+    );
+
+    try {
+      await api.tasks.delete(taskId);
+      toast.success("Task moved to trash");
+      mutate();
+    } catch (err) {
+      toast.error("Failed to archive task");
+      console.error(err);
+      mutate(); // rollback by re-fetching
+    }
+  };
+
+  const toggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === tasks.length && tasks.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tasks.map(t => t.id)));
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+
+    // Optimistically update
+    mutate(
+      (currentData: any) => {
+        if (!currentData?.items) return currentData;
+        return {
+          ...currentData,
+          items: currentData.items.filter((t: any) => !ids.includes(t.id)),
+          total: Math.max(0, currentData.total - ids.length),
+        };
+      },
+      false
+    );
+
+    try {
+      await Promise.all(ids.map(id => api.tasks.delete(id)));
+      toast.success(`${ids.length} tasks moved to trash`);
+      setSelectedIds(new Set());
+      mutate();
+    } catch (err) {
+      toast.error("Failed to archive some tasks");
+      console.error(err);
+      mutate();
+    }
   };
 
   return (
@@ -137,9 +215,17 @@ function TasksContent() {
           <>
             {/* Header */}
             <div
-              className="grid grid-cols-[1fr_140px_120px_100px_40px] gap-4 px-5 py-3"
+              className="grid grid-cols-[40px_1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3"
               style={{ background: "var(--surface-high)" }}
             >
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={tasks.length > 0 && selectedIds.size === tasks.length}
+                  onChange={toggleAll}
+                  className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
+                />
+              </div>
               <span
                 className="text-[11px] font-medium uppercase tracking-[0.05rem]"
                 style={{ color: "var(--on-surface-dim)" }}
@@ -165,17 +251,26 @@ function TasksContent() {
                 Created
               </span>
               <span />
+              <span />
             </div>
 
             {/* Rows */}
             <div className="divide-y divide-transparent">
               {tasks.map((task, i) => (
-                <Link
-                  href={`/tasks/${task.id}`}
+                <div
                   key={task.id}
-                  className="grid grid-cols-[1fr_140px_120px_100px_40px] gap-4 px-5 py-3.5 items-center transition-colors hover:bg-surface-highest animate-slide-in"
+                  onClick={() => router.push(`/tasks/${task.id}`)}
+                  className="cursor-pointer group grid grid-cols-[40px_1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3.5 items-center transition-colors hover:bg-surface-highest animate-slide-in"
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
+                  <div className="flex items-center justify-center" onClick={(e) => toggleSelect(e, task.id)}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(task.id)}
+                      readOnly
+                      className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
+                    />
+                  </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{task.title}</p>
                     <p
@@ -198,11 +293,18 @@ function TasksContent() {
                   >
                     {new Date(task.createdAt).toLocaleDateString()}
                   </span>
+                  <button
+                    onClick={(e) => handleArchive(e, task.id)}
+                    className="p-1.5 opacity-0 group-hover:opacity-100 hover:opacity-100! hover:bg-surface-high rounded-md transition-all flex justify-center text-on-surface-dim hover:text-red-400"
+                    title="Archive Task"
+                  >
+                    <Archive className="w-4 h-4" />
+                  </button>
                   <ArrowRight
                     className="w-4 h-4"
                     style={{ color: "var(--on-surface-dim)" }}
                   />
-                </Link>
+                </div>
               ))}
             </div>
 
@@ -274,6 +376,27 @@ function TasksContent() {
           </>
         )}
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#060e20] border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-5">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="w-px h-4 bg-white/10" />
+          <button
+            onClick={handleBulkArchive}
+            className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+          >
+            <Archive className="w-4 h-4" />
+            Archive
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="flex items-center gap-2 text-sm text-on-surface-dim hover:text-white transition-colors ml-2"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -285,12 +408,20 @@ export default function TasksPage() {
         title="Tasks"
         description="View and manage task orchestrations"
         actions={
-          <Link href="/tasks/new">
-            <Button className="gradient-primary text-[#060e20] font-medium border-0 hover:opacity-90">
-              <Plus className="w-4 h-4 mr-2" />
-              New Task
-            </Button>
-          </Link>
+          <div className="flex gap-2 items-center">
+            <Link href="/trash">
+              <Button variant="outline" className="text-on-surface-dim border-white/10 hover:bg-white/5 hover:text-white">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Trash
+              </Button>
+            </Link>
+            <Link href="/tasks/new">
+              <Button className="gradient-primary text-[#060e20] font-medium border-0 hover:opacity-90">
+                <Plus className="w-4 h-4 mr-2" />
+                New Task
+              </Button>
+            </Link>
+          </div>
         }
       />
       <Suspense

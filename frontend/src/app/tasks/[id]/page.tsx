@@ -243,7 +243,22 @@ export default function TaskDetailPage() {
         actions={
           <div className="flex items-center gap-3">
             <StatusBadge status={task.status} />
-            {task.status === "waiting_approval" && (
+            {task.isArchived ? (
+              <Button
+                onClick={async () => {
+                  try {
+                    await api.tasks.restore(taskId);
+                    await loadData();
+                  } catch (err) {
+                    alert("Failed to restore task");
+                  }
+                }}
+                className="bg-accent-teal text-[#060e20] font-medium border-0 hover:opacity-90"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Restore from Trash
+              </Button>
+            ) : task.status === "waiting_approval" ? (
               <>
                 <Button
                   onClick={handleApprove}
@@ -261,8 +276,8 @@ export default function TaskDetailPage() {
                   Reject
                 </Button>
               </>
-            )}
-            {canExecute && task.status === "failed" && task.subtasks && task.subtasks.length > 0 ? (
+            ) : null}
+            {!task.isArchived && canExecute && task.status === "failed" && task.subtasks && task.subtasks.length > 0 ? (
               /* Failed task with subtasks → show both Retry and Smart Retry */
               <>
                 <Button
@@ -291,7 +306,7 @@ export default function TaskDetailPage() {
                   Smart Retry
                 </Button>
               </>
-            ) : canExecute ? (
+            ) : (!task.isArchived && canExecute) ? (
               /* Queued or failed without subtasks → single Execute/Retry button */
               <Button
                 onClick={() => handleExecute(false)}
@@ -306,7 +321,7 @@ export default function TaskDetailPage() {
                 {task.status === "failed" ? "Retry" : "Execute"}
               </Button>
             ) : null}
-            {canCancel && (
+            {!task.isArchived && canCancel && (
               <Button
                 onClick={handleCancel}
                 variant="secondary"
@@ -316,7 +331,7 @@ export default function TaskDetailPage() {
                 Cancel
               </Button>
             )}
-            {canRerun && (
+            {!task.isArchived && canRerun && (
               <Button
                 onClick={() => handleExecute(false)}
                 disabled={executing}
@@ -331,14 +346,16 @@ export default function TaskDetailPage() {
                 Re-run
               </Button>
             )}
-            <Button
-              onClick={loadData}
-              variant="secondary"
-              className="bg-surface-high text-foreground border-0 hover:bg-surface-highest"
-              size="icon"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+            {!task.isArchived && (
+              <Button
+                onClick={loadData}
+                variant="secondary"
+                className="bg-surface-high text-foreground border-0 hover:bg-surface-highest"
+                size="icon"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         }
       />
@@ -485,6 +502,16 @@ export default function TaskDetailPage() {
               <InfoRow
                 label="Created By"
                 value={<span className="text-sm">{task.createdBy}</span>}
+              />
+              <InfoRow
+                label="Archived"
+                value={
+                  <span className="text-sm">
+                    {task.isArchived ? (
+                       <span className="text-red-400">Archived in Trash</span>
+                    ) : "Active"}
+                  </span>
+                }
               />
               <InfoRow
                 label="Delegation"

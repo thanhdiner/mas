@@ -46,6 +46,8 @@ class TaskResponse(BaseModel):
     error: Optional[str] = None
     createdAt: datetime
     updatedAt: Optional[datetime] = None
+    isArchived: bool = False
+    archivedAt: Optional[datetime] = None
 
 
 class SubtaskInfo(BaseModel):

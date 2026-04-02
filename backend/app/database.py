@@ -18,6 +18,7 @@ async def connect_db():
     await db.tasks.create_index("status")
     await db.tasks.create_index("assignedAgentId")
     await db.tasks.create_index("parentTaskId")
+    await db.tasks.create_index("archivedAt", expireAfterSeconds=2592000)
     await db.executions.create_index("taskId")
     await db.execution_steps.create_index("executionId")
     await db.approvals.create_index("taskId")

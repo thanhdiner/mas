@@ -68,6 +68,8 @@ export interface Task {
   createdAt: string;
   updatedAt?: string;
   agentName?: string;
+  isArchived?: boolean;
+  archivedAt?: string;
 }
 
 export interface TaskDetail extends Task {
@@ -298,10 +300,11 @@ export const api = {
       fetchAPI<{ message: string }>(`/agents/${id}`, { method: "DELETE" }),
   },
   tasks: {
-    list: (params?: { status?: string; parent_only?: boolean; page?: number; pageSize?: number }) => {
+    list: (params?: { status?: string; parent_only?: boolean; is_archived?: boolean; page?: number; pageSize?: number }) => {
       const query = new URLSearchParams();
       if (params?.status) query.set("status", params.status);
       if (params?.parent_only) query.set("parent_only", "true");
+      if (params?.is_archived) query.set("is_archived", "true");
       if (params?.page) query.set("page", String(params.page));
       if (params?.pageSize) query.set("page_size", String(params.pageSize));
       return fetchAPI<{ items: Task[]; total: number; page: number; pageSize: number }>(`/tasks?${query.toString()}`);
@@ -327,6 +330,18 @@ export const api = {
     reject: (id: string) =>
       fetchAPI<{ message: string; taskId: string }>(`/tasks/${id}/reject`, {
         method: "POST",
+      }),
+    delete: (id: string) =>
+      fetchAPI<{ message: string }>(`/tasks/${id}`, {
+        method: "DELETE",
+      }),
+    restore: (id: string) =>
+      fetchAPI<{ message: string }>(`/tasks/${id}/restore`, {
+        method: "POST",
+      }),
+    hardDelete: (id: string) =>
+      fetchAPI<{ message: string }>(`/tasks/${id}?hard=true`, {
+        method: "DELETE",
       }),
   },
   executions: {

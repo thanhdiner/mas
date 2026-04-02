@@ -24,6 +24,7 @@ class TaskService:
         status: Optional[TaskStatus] = None,
         agent_id: Optional[str] = None,
         parent_only: bool = False,
+        is_archived: bool = False,
         skip: int = 0,
         limit: int = 50,
     ) -> list[TaskResponse]:
@@ -36,6 +37,11 @@ class TaskService:
         if parent_only:
             query["parentTaskId"] = None
 
+        if is_archived:
+            query["isArchived"] = True
+        else:
+            query["isArchived"] = {"$ne": True}
+
         cursor = db.tasks.find(query).skip(skip).limit(limit).sort("createdAt", -1)
         docs = await cursor.to_list(length=limit)
         return [_doc_to_response(d) for d in docs]
@@ -45,6 +51,7 @@ class TaskService:
         status: Optional[TaskStatus] = None,
         agent_id: Optional[str] = None,
         parent_only: bool = False,
+        is_archived: bool = False,
     ) -> int:
         db = get_db()
         query: dict = {}
@@ -54,6 +61,11 @@ class TaskService:
             query["assignedAgentId"] = agent_id
         if parent_only:
             query["parentTaskId"] = None
+
+        if is_archived:
+            query["isArchived"] = True
+        else:
+            query["isArchived"] = {"$ne": True}
         return await db.tasks.count_documents(query)
 
     @staticmethod
@@ -137,6 +149,8 @@ class TaskService:
             "error": None,
             "createdAt": now,
             "updatedAt": None,
+            "isArchived": False,
+            "archivedAt": None,
         }
         result = await db.tasks.insert_one(doc)
         doc["_id"] = result.inserted_id
@@ -188,9 +202,48 @@ class TaskService:
         )
         return await TaskService.get_task(task_id)
 
-
+    @staticmethod
+    async def archive_task(task_id: str) -> Optional[TaskResponse]:
+        db = get_db()
+        await db.tasks.update_one(
+            {"_id": to_object_id(task_id, "task_id")},
+            {
+                "$set": {
+                    "isArchived": True,
+                    "archivedAt": datetime.now(timezone.utc),
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
+        )
+        return await TaskService.get_task(task_id)
 
     @staticmethod
+    async def restore_task(task_id: str) -> Optional[TaskResponse]:
+        db = get_db()
+        await db.tasks.update_one(
+            {"_id": to_object_id(task_id, "task_id")},
+            {
+                "$set": {
+                    "isArchived": False,
+                    "archivedAt": None,
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
+        )
+        return await TaskService.get_task(task_id)
+
+    @staticmethod
+    async def delete_task_hard(task_id: str) -> bool:
+        db = get_db()
+        obj_id = to_object_id(task_id, "task_id")
+        
+        # Optionally, delete associated executions/steps (if you want to fully clean up)
+        # Note: If there is a massive amount of data, this is good.
+        await db.executions.delete_many({"taskId": task_id})
+        await db.approvals.delete_many({"taskId": task_id})
+
+        result = await db.tasks.delete_one({"_id": obj_id})
+        return result.deleted_count > 0    @staticmethod
     async def count_failed_today() -> int:
         db = get_db()
         today_start = datetime.now(timezone.utc).replace(

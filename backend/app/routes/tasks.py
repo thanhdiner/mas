@@ -34,6 +34,7 @@ async def list_tasks(
     status: Optional[TaskStatus] = Query(None),
     agent_id: Optional[str] = Query(None),
     parent_only: bool = Query(False),
+    is_archived: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
@@ -45,6 +46,7 @@ async def list_tasks(
         status=status,
         agent_id=agent_id,
         parent_only=parent_only,
+        is_archived=is_archived,
         skip=skip,
         limit=page_size,
     )
@@ -52,6 +54,7 @@ async def list_tasks(
         status=status,
         agent_id=agent_id,
         parent_only=parent_only,
+        is_archived=is_archived,
     )
     return {
         "items": [item.model_dump() for item in items],
@@ -88,6 +91,32 @@ async def update_task(task_id: ValidObjectId, data: TaskUpdate):
     if not task:
         raise NotFoundError("task_not_found", "Task not found")
     return task
+
+
+@router.delete("/{task_id}")
+async def delete_task(task_id: ValidObjectId, hard: bool = Query(False)):
+    """Soft delete (archive) a task by default, or hard delete if hard=True."""
+    task = await TaskService.get_task(task_id)
+    if not task:
+        raise NotFoundError("task_not_found", "Task not found")
+
+    if hard:
+        await TaskService.delete_task_hard(task_id)
+        return {"message": "Task permanently deleted"}
+    else:
+        await TaskService.archive_task(task_id)
+        return {"message": "Task moved to trash"}
+
+
+@router.post("/{task_id}/restore")
+async def restore_task(task_id: ValidObjectId):
+    """Restore an archived task from trash."""
+    task = await TaskService.get_task(task_id)
+    if not task:
+        raise NotFoundError("task_not_found", "Task not found")
+
+    await TaskService.restore_task(task_id)
+    return {"message": "Task restored"}
 
 
 @router.post("/{task_id}/execute")

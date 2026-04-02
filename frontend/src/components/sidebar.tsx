@@ -16,6 +16,7 @@ import {
   BookOpen,
   Webhook as WebhookIcon,
   Settings,
+  Trash2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -69,6 +70,11 @@ const navGroups = [
     href: "/knowledge",
     label: "Knowledge Base",
     icon: BookOpen,
+  },
+  {
+    href: "/trash",
+    label: "Trash",
+    icon: Trash2,
   },
 ];
 
