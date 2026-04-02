@@ -11,7 +11,9 @@ export function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar_collapsed");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored !== null) setCollapsed(stored === "true");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoaded(true);
   }, []);
 

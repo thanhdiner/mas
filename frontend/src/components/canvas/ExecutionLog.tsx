@@ -23,6 +23,7 @@ export function ExecutionLog({
 
   // Auto-expand when a new execution starts
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isExecuting) setIsCollapsed(false);
   }, [isExecuting]);
 
