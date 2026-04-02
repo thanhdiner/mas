@@ -88,6 +88,7 @@ def _bootstrap():
         "app.tools.write_file",
         "app.tools.knowledge_search",
         "app.tools.facebook",
+        "app.tools.generate_image",
     ]
     for mod in modules:
         try:

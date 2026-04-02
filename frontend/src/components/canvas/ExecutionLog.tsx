@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Loader2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, X, Copy, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export interface LogEntry {
@@ -20,6 +20,14 @@ export function ExecutionLog({
   resetAllExecStates: () => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    const textToCopy = execLog.map(log => `[${log.time}] ${log.text}`).join('\n');
+    navigator.clipboard.writeText(textToCopy);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   // Auto-expand when a new execution starts
   useEffect(() => {
@@ -54,6 +62,15 @@ export function ExecutionLog({
             className="text-[10px] px-2 py-1 rounded hover:bg-white/10 transition-colors"
             style={{ color: "rgba(232,234,237,0.45)" }}
           >Clear</button>
+
+          <button
+            onClick={handleCopy}
+            className="p-1 rounded hover:bg-white/10 transition-colors flex items-center justify-center"
+            style={{ color: isCopied ? "#4edea3" : "rgba(232,234,237,0.45)" }}
+            title="Copy Logs"
+          >
+            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
 
           <div className="w-[1px] h-3 bg-white/10 mx-1"></div>
 

@@ -14,13 +14,17 @@ PARAMS = {
         "action": {
             "type": "string",
             "description": (
-                "Facebook action to execute. Only supported action: post_feed. "
+                "Facebook action. Supported: post_feed (text post), post_photo (post with image). "
                 "Do NOT provide page_id — it is auto-configured."
             ),
         },
         "message": {
             "type": "string",
             "description": "The full text content of the Facebook post.",
+        },
+        "image_url": {
+            "type": "string",
+            "description": "URL of an image to post. Required for post_photo action. Use generate_image tool to get the URL first.",
         },
         "link": {
             "type": "string",
@@ -60,6 +64,7 @@ async def _get_page_token(user_token: str, page_id: str) -> str | None:
 async def _handle(
     action: str,
     message: str | None = None,
+    image_url: str | None = None,
     link: str | None = None,
     **kwargs,
 ) -> str:
@@ -67,8 +72,8 @@ async def _handle(
     page_id = str(kwargs.get("default_page_id") or "").strip()
     credential_ref = str(kwargs.get("credential_ref") or "").strip()
 
-    if normalized_action != "post_feed":
-        return "ERROR: Unsupported action. Only post_feed is supported."
+    if normalized_action not in ("post_feed", "post_photo"):
+        return "ERROR: Unsupported action. Use post_feed or post_photo."
 
     if not page_id:
         return "ERROR: default_page_id is not configured in tool settings."
@@ -88,17 +93,24 @@ async def _handle(
         # Fall back to using the raw token directly
         page_token = raw_token
 
-    # Post to Facebook using access_token as query parameter (Facebook's required format)
-    payload: dict[str, Any] = {"message": message}
-    if link:
-        payload["link"] = link
+    # Determine endpoint and payload
+    if normalized_action == "post_photo" and image_url:
+        # Post photo via /photos endpoint
+        endpoint = f"{BASE_URL}/v19.0/{page_id}/photos"
+        payload: dict[str, Any] = {"message": message, "url": image_url}
+    else:
+        # Regular text post via /feed endpoint
+        endpoint = f"{BASE_URL}/v19.0/{page_id}/feed"
+        payload = {"message": message}
+        if link:
+            payload["link"] = link
 
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             res = await client.post(
-                f"{BASE_URL}/v19.0/{page_id}/feed",
+                endpoint,
                 params={"access_token": page_token},
-                json=payload,
+                data=payload,
             )
             data = res.json()
 
@@ -106,7 +118,7 @@ async def _handle(
                 err_msg = data["error"].get("message", str(data["error"]))
                 return f"ERROR: Facebook API error: {err_msg}"
 
-            post_id = data.get("id", "unknown")
+            post_id = data.get("id", data.get("post_id", "unknown"))
             return f"SUCCESS: Post published to Facebook! Post ID: {post_id}"
 
     except httpx.TimeoutException:
