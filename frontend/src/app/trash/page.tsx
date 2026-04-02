@@ -32,6 +32,7 @@ function TaskTrashContent() {
   const pathname = usePathname();
 
   const page = parseInt(searchParams.get("page") || "1", 10);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { tasks, total, isLoading: loading, mutate } = useTasks({
     parent_only: true, // We still group by parent
@@ -105,6 +106,79 @@ function TaskTrashContent() {
     }
   };
 
+  const toggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === tasks.length && tasks.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tasks.map(t => t.id)));
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+
+    mutate(
+      (currentData: any) => {
+        if (!currentData?.items) return currentData;
+        return {
+          ...currentData,
+          items: currentData.items.filter((t: any) => !ids.includes(t.id)),
+          total: Math.max(0, currentData.total - ids.length),
+        };
+      },
+      false
+    );
+
+    try {
+      await Promise.all(ids.map(id => api.tasks.restore(id)));
+      toast.success(`${ids.length} tasks restored`);
+      setSelectedIds(new Set());
+      mutate();
+    } catch (err) {
+      toast.error("Failed to restore some tasks");
+      console.error(err);
+      mutate();
+    }
+  };
+
+  const handleBulkHardDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete ${selectedIds.size} tasks? This action cannot be undone.`)) return;
+    const ids = Array.from(selectedIds);
+
+    mutate(
+      (currentData: any) => {
+        if (!currentData?.items) return currentData;
+        return {
+          ...currentData,
+          items: currentData.items.filter((t: any) => !ids.includes(t.id)),
+          total: Math.max(0, currentData.total - ids.length),
+        };
+      },
+      false
+    );
+
+    try {
+      await Promise.all(ids.map(id => api.tasks.hardDelete(id)));
+      toast.success(`${ids.length} tasks permanently deleted`);
+      setSelectedIds(new Set());
+      mutate();
+    } catch (err) {
+      toast.error("Failed to permanently delete some tasks");
+      console.error(err);
+      mutate();
+    }
+  };
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -146,9 +220,17 @@ function TaskTrashContent() {
         ) : (
           <>
             <div
-              className="grid grid-cols-[1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3"
+              className="grid grid-cols-[40px_1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3"
               style={{ background: "var(--surface-high)" }}
             >
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={tasks.length > 0 && selectedIds.size === tasks.length}
+                  onChange={toggleAll}
+                  className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
+                />
+              </div>
               <span
                 className="text-[11px] font-medium uppercase tracking-[0.05rem]"
                 style={{ color: "var(--on-surface-dim)" }}
@@ -182,8 +264,16 @@ function TaskTrashContent() {
                 <div
                   key={task.id}
                   onClick={() => router.push(`/tasks/${task.id}`)}
-                  className="cursor-pointer group grid grid-cols-[1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3.5 items-center hover:bg-surface-high transition-colors"
+                  className="cursor-pointer group grid grid-cols-[40px_1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3.5 items-center hover:bg-surface-high transition-colors"
                 >
+                  <div className="flex items-center justify-center" onClick={(e) => toggleSelect(e, task.id)}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(task.id)}
+                      readOnly
+                      className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
+                    />
+                  </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate opacity-60 line-through">{task.title}</p>
                     <p
@@ -290,6 +380,34 @@ function TaskTrashContent() {
           </>
         )}
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#060e20] border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-5">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="w-px h-4 bg-white/10" />
+          <button
+            onClick={handleBulkRestore}
+            className="flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Restore
+          </button>
+          <button
+            onClick={handleBulkHardDelete}
+            className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Permanently
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="flex items-center gap-2 text-sm text-on-surface-dim hover:text-white transition-colors ml-2"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </>
   );
 }
