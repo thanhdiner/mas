@@ -20,6 +20,7 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 - **Robust Task States**: Full lifecycle tracking: `queued`, `running`, `waiting_approval`, `done`, `failed`, `cancelled`.
 - **Human-in-the-Loop**: Approval workflow for sensitive agent tasks, with native inline 1-click Approve/Reject controls directly on the Execution UI.
 - **Webhooks & Schedules**: External trigger integration and automated scheduled executions.
+- **Social Media Integration**: Dual-mode Facebook Fanpage management — **OAuth auto-connect** (sync all pages from any FB account in one click) and **Manual Token** entry. Real-time Graph API sync for page avatars, follower counts, and admin identity tracking.
 - **CI/CD Pipeline**: GitHub Actions for automated testing, linting, and Docker image builds.
 
 ## 🛠️ Tech Stack
@@ -30,6 +31,7 @@ MAS transforms individual LLMs into a structured organization. Users define agen
 - **Vector Store**: ChromaDB (semantic search for RAG)
 - **AI Providers**: OpenAI, Anthropic, Groq, Together AI
 - **Task Queue**: Celery + Redis (or FastAPI BackgroundTasks for development)
+- **HTTP Client**: httpx (Facebook Graph API)
 - **Real-time**: WebSockets
 - **Scheduler**: APScheduler
 
@@ -49,9 +51,9 @@ mas/
 │   └── docker.yml          # Docker image builds
 ├── backend/                # FastAPI Application
 │   ├── app/
-│   │   ├── models/         # Pydantic Schemas (Agent, Task, Execution)
-│   │   ├── services/       # Orchestration, LLM Provider, Vector Store
-│   │   ├── routes/         # REST & WebSocket Endpoints
+│   │   ├── models/         # Pydantic Schemas (Agent, Task, Execution, Facebook)
+│   │   ├── services/       # Orchestration, LLM Provider, Vector Store, Facebook
+│   │   ├── routes/         # REST & WebSocket Endpoints (incl. Social Media)
 │   │   ├── tools/          # Agent Tools (GitHub, Slack, Gmail, etc.)
 │   │   ├── utils/          # Task Dispatcher, WebSocket Manager
 │   │   └── worker/         # Celery Task Queue Workers
@@ -79,6 +81,7 @@ mas/
 cd backend
 cp .env.example .env
 # Edit .env: add OPENAI_API_KEY and optionally ANTHROPIC_API_KEY, GROQ_API_KEY
+# For Facebook integration: add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
