@@ -87,6 +87,7 @@ def _bootstrap():
         "app.tools.execute_code",
         "app.tools.write_file",
         "app.tools.knowledge_search",
+        "app.tools.facebook",
     ]
     for mod in modules:
         try:
