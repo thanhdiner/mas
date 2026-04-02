@@ -51,6 +51,8 @@ export interface Agent {
   provider?: string | null;
   createdAt: string;
   updatedAt: string | null;
+  isArchived: boolean;
+  archivedAt: string | null;
 }
 
 export interface Task {
@@ -283,8 +285,8 @@ async function fetchFile(
 
 export const api = {
   agents: {
-    list: (activeOnly = false) =>
-      fetchAPI<Agent[]>(`/agents?active_only=${activeOnly}`),
+    list: (activeOnly = false, isArchived = false) =>
+      fetchAPI<Agent[]>(`/agents?active_only=${activeOnly}&is_archived=${isArchived}`),
     get: (id: string) => fetchAPI<Agent>(`/agents/${id}`),
     create: (data: Partial<Agent>) =>
       fetchAPI<Agent>("/agents", {
@@ -296,8 +298,10 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
-    delete: (id: string) =>
-      fetchAPI<{ message: string }>(`/agents/${id}`, { method: "DELETE" }),
+    delete: (id: string, hard = false) =>
+      fetchAPI<{ message: string }>(`/agents/${id}?hard=${hard}`, { method: "DELETE" }),
+    restore: (id: string) =>
+      fetchAPI<{ message: string; agentId: string }>(`/agents/${id}/restore`, { method: "POST" }),
   },
   tasks: {
     list: (params?: { status?: string; parent_only?: boolean; is_archived?: boolean; page?: number; pageSize?: number }) => {

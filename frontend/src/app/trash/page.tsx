@@ -18,6 +18,7 @@ import {
 import type { TaskStatus } from "@/lib/api";
 import { api } from "@/lib/api";
 import { useTasks } from "@/lib/hooks/use-tasks";
+import { useAgents } from "@/lib/hooks/use-agents";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -412,6 +413,303 @@ function TaskTrashContent() {
   );
 }
 
+function AgentTrashContent() {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // NOTE: useAgents does not natively support pagination yet unlike tasks. 
+  // It returns the full list. We will handle pagination on client if needed OR just show all.
+  // Signature: useAgents(activeOnly, isArchived)
+  const { agents, isLoading: loading, mutate } = useAgents(false, true);
+
+  const handleRestore = async (e: React.MouseEvent, agentId: string) => {
+    e.stopPropagation();
+
+    mutate(
+      (currentAgents: any) => {
+        if (!currentAgents) return currentAgents;
+        return currentAgents.filter((a: any) => a.id !== agentId);
+      },
+      false
+    );
+
+    try {
+      await api.agents.restore(agentId);
+      toast.success("Agent restored successfully");
+      mutate();
+    } catch (err) {
+      toast.error("Failed to restore agent");
+      console.error(err);
+      mutate();
+    }
+  };
+
+  const handleHardDelete = async (e: React.MouseEvent, agentId: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to permanently delete this agent? This action cannot be undone.")) return;
+
+    mutate(
+      (currentAgents: any) => {
+        if (!currentAgents) return currentAgents;
+        return currentAgents.filter((a: any) => a.id !== agentId);
+      },
+      false
+    );
+
+    try {
+      await api.agents.delete(agentId, true);
+      toast.success("Agent deleted permanently");
+      mutate();
+    } catch (err) {
+      toast.error("Failed to permanently delete agent");
+      console.error(err);
+      mutate();
+    }
+  };
+
+  const toggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === agents.length && agents.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(agents.map(a => a.id)));
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+
+    mutate(
+      (currentAgents: any) => {
+        if (!currentAgents) return currentAgents;
+        return currentAgents.filter((a: any) => !ids.includes(a.id));
+      },
+      false
+    );
+
+    try {
+      await Promise.all(ids.map(id => api.agents.restore(id)));
+      toast.success(`${ids.length} agents restored`);
+      setSelectedIds(new Set());
+      mutate();
+    } catch (err) {
+      toast.error("Failed to restore some agents");
+      console.error(err);
+      mutate();
+    }
+  };
+
+  const handleBulkHardDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete ${selectedIds.size} agents? This action cannot be undone.`)) return;
+    const ids = Array.from(selectedIds);
+
+    mutate(
+      (currentAgents: any) => {
+        if (!currentAgents) return currentAgents;
+        return currentAgents.filter((a: any) => !ids.includes(a.id));
+      },
+      false
+    );
+
+    try {
+      await Promise.all(ids.map(id => api.agents.delete(id, true)));
+      toast.success(`${ids.length} agents permanently deleted`);
+      setSelectedIds(new Set());
+      mutate();
+    } catch (err) {
+      toast.error("Failed to permanently delete some agents");
+      console.error(err);
+      mutate();
+    }
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div></div>
+        {!loading && (
+          <span
+            className="text-xs tabular-nums"
+            style={{ color: "var(--on-surface-dim)" }}
+          >
+            {agents.length} agent{agents.length !== 1 ? "s" : ""} in trash
+          </span>
+        )}
+      </div>
+
+      <div
+        className="rounded-xl overflow-hidden shadow-sm border border-white/5"
+        style={{ background: "var(--surface-container)" }}
+      >
+        {loading ? (
+          <div
+            className="text-center py-16 text-sm"
+            style={{ color: "var(--on-surface-dim)" }}
+          >
+            Loading trash...
+          </div>
+        ) : agents.length === 0 ? (
+          <div className="text-center py-16">
+            <Trash2
+              className="w-10 h-10 mx-auto mb-3 text-on-surface-dim opacity-30"
+            />
+            <p className="font-heading font-medium mb-1">Trash is empty</p>
+            <p
+              className="text-sm"
+              style={{ color: "var(--on-surface-dim)" }}
+            >
+              No deleted agents found
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              className="grid grid-cols-[40px_1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3"
+              style={{ background: "var(--surface-high)" }}
+            >
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={agents.length > 0 && selectedIds.size === agents.length}
+                  onChange={toggleAll}
+                  className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
+                />
+              </div>
+              <span
+                className="text-[11px] font-medium uppercase tracking-[0.05rem]"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Agent Name
+              </span>
+              <span
+                className="text-[11px] font-medium uppercase tracking-[0.05rem]"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Role
+              </span>
+              <span
+                className="text-[11px] font-medium uppercase tracking-[0.05rem]"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Status
+              </span>
+              <span
+                className="text-[11px] font-medium uppercase tracking-[0.05rem]"
+                style={{ color: "var(--on-surface-dim)" }}
+              >
+                Deleted On
+              </span>
+              <span></span>
+              <span></span>
+            </div>
+
+            <div className="divide-y divide-white/5">
+              {agents.map((agent: any) => (
+                <div
+                  key={agent.id}
+                  className="group grid grid-cols-[40px_1fr_140px_120px_100px_40px_40px] gap-4 px-5 py-3.5 items-center hover:bg-surface-high transition-colors"
+                >
+                  <div className="flex items-center justify-center" onClick={(e) => toggleSelect(e, agent.id)}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(agent.id)}
+                      readOnly
+                      className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate opacity-60 line-through">{agent.name}</p>
+                    <p
+                      className="text-[11px] truncate mt-0.5 opacity-40 uppercase tracking-widest"
+                      style={{ color: "var(--on-surface-dim)" }}
+                    >
+                      ID: {agent.id.substring(0, 8)}
+                    </p>
+                  </div>
+                  <span
+                    className="text-xs truncate opacity-60"
+                    style={{ color: "var(--on-surface-dim)" }}
+                  >
+                    {agent.role}
+                  </span>
+                  <div className="opacity-60 grayscale">
+                    <span
+                      className="text-[11px]"
+                      style={{
+                        color: agent.active
+                          ? "var(--accent-teal)"
+                          : "var(--on-surface-dim)",
+                      }}
+                    >
+                      {agent.active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <span
+                    className="text-[11px] opacity-60"
+                    style={{ color: "var(--on-surface-dim)" }}
+                  >
+                    {agent.archivedAt ? new Date(agent.archivedAt).toLocaleDateString() : new Date(agent.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    onClick={(e) => handleRestore(e, agent.id)}
+                    className="p-1.5 opacity-0 group-hover:opacity-100 hover:opacity-100! hover:bg-surface-highest rounded-md transition-all flex justify-center text-on-surface-dim hover:text-green-400"
+                    title="Restore Agent"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => handleHardDelete(e, agent.id)}
+                    className="p-1.5 opacity-0 group-hover:opacity-100 hover:opacity-100! hover:bg-surface-highest rounded-md transition-all flex justify-center text-on-surface-dim hover:text-red-500"
+                    title="Delete Permanently"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#060e20] border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-5">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="w-px h-4 bg-white/10" />
+          <button
+            onClick={handleBulkRestore}
+            className="flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Restore
+          </button>
+          <button
+            onClick={handleBulkHardDelete}
+            className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Permanently
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="flex items-center gap-2 text-sm text-on-surface-dim hover:text-white transition-colors ml-2"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 function GlobalTrashContainer() {
   const [activeTab, setActiveTab] = useState("tasks");
 
@@ -437,10 +735,8 @@ function GlobalTrashContainer() {
             Tasks
           </TabsTrigger>
           <TabsTrigger 
-            value="agents" 
-            disabled
-            className="flex items-center gap-2 data-[state=active]:bg-surface-high data-[state=active]:text-foreground rounded-md px-4 py-2 font-medium transition-all opacity-50"
-            title="Coming soon"
+            value="agents"
+            className="flex items-center gap-2 data-[state=active]:bg-surface-high data-[state=active]:text-foreground rounded-md px-4 py-2 font-medium transition-all"
           >
             <Bot className="w-4 h-4" />
             Agents
@@ -467,8 +763,18 @@ function GlobalTrashContainer() {
             <TaskTrashContent />
           </Suspense>
         </TabsContent>
+        <TabsContent value="agents" className="mt-0 outline-none">
+          <Suspense
+            fallback={
+              <div className="text-center py-16 text-sm text-on-surface-dim">
+                Loading agents...
+              </div>
+            }
+          >
+            <AgentTrashContent />
+          </Suspense>
+        </TabsContent>
         {/* Placeholder for future tabs */}
-        <TabsContent value="agents" className="mt-0 outline-none" />
         <TabsContent value="webhooks" className="mt-0 outline-none" />
       </Tabs>
     </>

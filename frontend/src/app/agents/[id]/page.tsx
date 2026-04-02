@@ -357,6 +357,7 @@ export default function AgentFormPage() {
     active: true,
     model: "",
     provider: "",
+    isArchived: false,
   });
 
   useEffect(() => {
@@ -429,6 +430,7 @@ export default function AgentFormPage() {
             active: agent.active,
             model: agent.model || "",
             provider: agent.provider || "",
+            isArchived: agent.isArchived || false,
           });
           setAgentToolConfig(nextToolConfig);
           setToolConfigForms(buildToolConfigForms(loadedTools, nextToolConfig));
@@ -611,6 +613,10 @@ export default function AgentFormPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (form.isArchived) {
+      alert("Cannot save an archived agent. Please restore it first.");
+      return;
+    }
     setSaving(true);
 
     const allowedTools = selectedToolNames;
@@ -691,6 +697,20 @@ export default function AgentFormPage() {
           }}
         >
           {resourceError}
+        </div>
+      )}
+
+      {form.isArchived && (
+        <div
+          className="mb-6 max-w-4xl rounded-2xl px-5 py-4 text-sm flex items-start gap-4 border border-red-500/20"
+          style={{ background: "rgba(220, 38, 38, 0.1)" }}
+        >
+          <div className="flex-1">
+            <h3 className="font-semibold text-red-500 mb-1">Agent is Archived</h3>
+            <p className="text-red-400">
+              This agent is currently in the trash and operates in read-only mode. You cannot save changes to it until it is restored.
+            </p>
+          </div>
         </div>
       )}
 

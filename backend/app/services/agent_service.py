@@ -18,11 +18,20 @@ class AgentService:
     @staticmethod
     async def list_agents(
         active_only: bool = False,
+        is_archived: bool = False,
         skip: int = 0,
         limit: int = 50,
     ) -> list[AgentResponse]:
         db = get_db()
-        query = {"active": True} if active_only else {}
+        query: dict = {}
+        if is_archived:
+            query["isArchived"] = True
+        else:
+            query["isArchived"] = {"$ne": True}
+
+        if active_only:
+            query["active"] = True
+        
         cursor = db.agents.find(query).skip(skip).limit(limit).sort("createdAt", -1)
         docs = await cursor.to_list(length=limit)
         return [_doc_to_response(d) for d in docs]
@@ -51,6 +60,8 @@ class AgentService:
             **data.model_dump(),
             "createdAt": now,
             "updatedAt": None,
+            "isArchived": False,
+            "archivedAt": None,
         }
         try:
             result = await db.agents.insert_one(doc)
@@ -79,15 +90,38 @@ class AgentService:
         return await AgentService.get_agent(agent_id)
 
     @staticmethod
-    async def delete_agent(agent_id: str) -> bool:
+    async def delete_agent(agent_id: str, hard: bool = False) -> bool:
         db = get_db()
-        result = await db.agents.delete_one(
-            {"_id": to_object_id(agent_id, "agent_id")}
-        )
-        return result.deleted_count > 0
+        if hard:
+            result = await db.agents.delete_one(
+                {"_id": to_object_id(agent_id, "agent_id")}
+            )
+            return result.deleted_count > 0
+        else:
+            result = await db.agents.update_one(
+                {"_id": to_object_id(agent_id, "agent_id")},
+                {"$set": {"isArchived": True, "archivedAt": datetime.now(timezone.utc)}},
+            )
+            return result.modified_count > 0
 
     @staticmethod
-    async def count_agents(active_only: bool = False) -> int:
+    async def restore_agent(agent_id: str) -> bool:
         db = get_db()
-        query = {"active": True} if active_only else {}
+        result = await db.agents.update_one(
+            {"_id": to_object_id(agent_id, "agent_id")},
+            {"$set": {"isArchived": False, "archivedAt": None}},
+        )
+        return result.modified_count > 0
+
+    @staticmethod
+    async def count_agents(active_only: bool = False, is_archived: bool = False) -> int:
+        db = get_db()
+        query: dict = {}
+        if is_archived:
+            query["isArchived"] = True
+        else:
+            query["isArchived"] = {"$ne": True}
+
+        if active_only:
+            query["active"] = True
         return await db.agents.count_documents(query)
