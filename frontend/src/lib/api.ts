@@ -477,8 +477,9 @@ export const api = {
   },
 
   webhooks: {
-    list: (params?: { page?: number; pageSize?: number }) => {
+    list: (params?: { is_archived?: boolean; page?: number; pageSize?: number }) => {
       const query = new URLSearchParams();
+      if (params?.is_archived) query.set("is_archived", "true");
       if (params?.page) query.set("page", String(params.page));
       if (params?.pageSize) query.set("page_size", String(params.pageSize));
       return fetchAPI<{ items: Webhook[]; total: number; page: number; pageSize: number }>(`/webhooks?${query.toString()}`);
@@ -496,6 +497,14 @@ export const api = {
     delete: (webhookId: string) =>
       fetchAPI<{ message: string; webhookId: string }>(`/webhooks/${webhookId}`, {
         method: "DELETE",
+      }),
+    hardDelete: (webhookId: string) =>
+      fetchAPI<{ message: string }>(`/webhooks/${webhookId}?hard=true`, {
+        method: "DELETE",
+      }),
+    restore: (webhookId: string) =>
+      fetchAPI<{ message: string; webhookId: string }>(`/webhooks/${webhookId}/restore`, {
+        method: "POST",
       }),
     rotateToken: (webhookId: string) =>
       fetchAPI<WebhookSecret>(`/webhooks/${webhookId}/rotate-token`, {
@@ -630,6 +639,37 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+  },
+
+  social: {
+    facebook: {
+      listPages: (params?: { skip?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        if (typeof params?.skip === "number") query.set("skip", String(params.skip));
+        if (typeof params?.limit === "number") query.set("limit", String(params.limit));
+        return fetchAPI<FacebookPageList>(`/social/facebook/pages?${query.toString()}`);
+      },
+      createManualPage: (pageId: string, accessToken: string) =>
+        fetchAPI<FacebookPage>("/social/facebook/pages/manual", {
+          method: "POST",
+          body: JSON.stringify({ pageId, accessToken }),
+        }),
+      getAuthUrl: () => 
+        fetchAPI<{url: string}>("/social/facebook/auth/url"),
+      deletePage: (pageId: string) =>
+        fetchAPI<{ message: string; pageId: string }>(`/social/facebook/pages/${pageId}`, {
+          method: "DELETE",
+        }),
+      updatePage: (pageId: string, data: Partial<FacebookPage>) =>
+        fetchAPI<FacebookPage>(`/social/facebook/pages/${pageId}`, {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        }),
+      seedPages: () =>
+        fetchAPI<{ message: string; inserted: number }>("/social/facebook/pages/seed", {
+          method: "POST",
+        }),
+    },
   },
 };
 
@@ -818,6 +858,8 @@ export interface Webhook {
   allowDelegation: boolean;
   requiresApproval: boolean;
   active: boolean;
+  isArchived: boolean;
+  archivedAt?: string | null;
   lastTriggeredAt?: string | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -937,4 +979,38 @@ export interface WebhookTestNotificationPreview {
   event: string;
   payload: Record<string, unknown>;
   test: boolean;
+}
+
+// ─── Facebook Types ──────────────────────────────────────────────────
+
+export type FacebookPageTokenStatus = "active" | "expired" | "revoked";
+
+export interface FacebookPage {
+  id: string;
+  pageId: string;
+  name: string;
+  category: string;
+  followersCount: number;
+  tokenStatus: FacebookPageTokenStatus;
+  avatarColor: string;
+  avatarUrl?: string;
+  connectedAccountName?: string | null;
+  connectedAccountAvatar?: string | null;
+  lastPostedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface FacebookPageList {
+  items: FacebookPage[];
+  total: number;
+}
+
+export interface FacebookPageCreateInput {
+  pageId: string;
+  name: string;
+  category?: string;
+  accessToken?: string;
+  followersCount?: number;
+  avatarColor?: string;
 }

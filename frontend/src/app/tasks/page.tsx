@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Trash2,
   Archive,
+  Check,
 } from "lucide-react";
 import type { TaskStatus } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -219,12 +220,16 @@ function TasksContent() {
               style={{ background: "var(--surface-high)" }}
             >
               <div className="flex items-center justify-center">
-                <input
-                  type="checkbox"
-                  checked={tasks.length > 0 && selectedIds.size === tasks.length}
-                  onChange={toggleAll}
-                  className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
-                />
+                <div 
+                  className="flex items-center justify-center cursor-pointer w-4 h-4 rounded border transition-colors shrink-0"
+                  style={{
+                    borderColor: tasks.length > 0 && selectedIds.size === tasks.length ? "var(--accent-cyan)" : "rgba(255,255,255,0.2)",
+                    background: tasks.length > 0 && selectedIds.size === tasks.length ? "var(--accent-cyan)" : "var(--surface-lowest)"
+                  }}
+                  onClick={() => toggleAll()}
+                >
+                  {tasks.length > 0 && selectedIds.size === tasks.length && <Check className="w-3 h-3 text-[#060e20]" strokeWidth={3} />}
+                </div>
               </div>
               <span
                 className="text-[11px] font-medium uppercase tracking-[0.05rem]"
@@ -264,12 +269,15 @@ function TasksContent() {
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
                   <div className="flex items-center justify-center" onClick={(e) => toggleSelect(e, task.id)}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(task.id)}
-                      readOnly
-                      className="w-4 h-4 rounded border-white/20 bg-surface-lowest accent-accent-cyan cursor-pointer"
-                    />
+                    <div 
+                      className="flex items-center justify-center cursor-pointer w-4 h-4 rounded border transition-colors shrink-0"
+                      style={{
+                        borderColor: selectedIds.has(task.id) ? "var(--accent-cyan)" : "rgba(255,255,255,0.2)",
+                        background: selectedIds.has(task.id) ? "var(--accent-cyan)" : "var(--surface-lowest)"
+                      }}
+                    >
+                      {selectedIds.has(task.id) && <Check className="w-3 h-3 text-[#060e20]" strokeWidth={3} />}
+                    </div>
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{task.title}</p>

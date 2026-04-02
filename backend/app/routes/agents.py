@@ -12,10 +12,11 @@ router = APIRouter(prefix="/agents", tags=["Agents"])
 @router.get("", response_model=list[AgentResponse])
 async def list_agents(
     active_only: bool = Query(False),
+    is_archived: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
-    return await AgentService.list_agents(active_only=active_only, skip=skip, limit=limit)
+    return await AgentService.list_agents(active_only=active_only, is_archived=is_archived, skip=skip, limit=limit)
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -42,8 +43,16 @@ async def update_agent(agent_id: ValidObjectId, data: AgentUpdate):
 
 
 @router.delete("/{agent_id}")
-async def delete_agent(agent_id: ValidObjectId):
-    deleted = await AgentService.delete_agent(agent_id)
+async def delete_agent(agent_id: ValidObjectId, hard: bool = Query(False)):
+    deleted = await AgentService.delete_agent(agent_id, hard)
     if not deleted:
         raise NotFoundError("agent_not_found", "Agent not found")
     return {"message": "Agent deleted"}
+
+
+@router.post("/{agent_id}/restore")
+async def restore_agent(agent_id: ValidObjectId):
+    restored = await AgentService.restore_agent(agent_id)
+    if not restored:
+        raise NotFoundError("agent_not_found", "Agent not found")
+    return {"message": "Agent restored", "agentId": agent_id}

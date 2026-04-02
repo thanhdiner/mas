@@ -35,6 +35,8 @@ class WebhookResponse(BaseModel):
     allowDelegation: bool
     requiresApproval: bool
     active: bool
+    isArchived: bool = False
+    archivedAt: Optional[datetime] = None
     lastTriggeredAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: Optional[datetime] = None

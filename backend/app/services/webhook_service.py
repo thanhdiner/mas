@@ -178,10 +178,13 @@ def _get_test_notification_metadata(
 
 class WebhookService:
     @staticmethod
-    async def list_webhooks(skip: int = 0, limit: int = 100) -> tuple[list[WebhookResponse], int]:
+    async def list_webhooks(is_archived: bool = False, skip: int = 0, limit: int = 100) -> tuple[list[WebhookResponse], int]:
         db = get_db()
-        total = await db.webhooks.count_documents({})
-        cursor = db.webhooks.find({}).skip(skip).limit(limit).sort("createdAt", -1)
+        
+        query = {"isArchived": True} if is_archived else {"isArchived": {"$ne": True}}
+        
+        total = await db.webhooks.count_documents(query)
+        cursor = db.webhooks.find(query).skip(skip).limit(limit).sort("createdAt", -1)
         docs = await cursor.to_list(length=limit)
 
         responses: list[WebhookResponse] = []
@@ -247,12 +250,32 @@ class WebhookService:
         return await WebhookService.get_webhook(webhook_id)
 
     @staticmethod
-    async def delete_webhook(webhook_id: str) -> bool:
+    async def delete_webhook(webhook_id: str, hard: bool = False) -> bool:
         db = get_db()
-        result = await db.webhooks.delete_one(
-            {"_id": to_object_id(webhook_id, "webhook_id")}
+        if hard:
+            result = await db.webhooks.delete_one(
+                {"_id": to_object_id(webhook_id, "webhook_id")}
+            )
+            return result.deleted_count > 0
+        else:
+            result = await db.webhooks.update_one(
+                {"_id": to_object_id(webhook_id, "webhook_id")},
+                {"$set": {
+                    "isArchived": True,
+                    "archivedAt": datetime.now(timezone.utc),
+                    "active": False
+                }}
+            )
+            return result.modified_count > 0
+
+    @staticmethod
+    async def restore_webhook(webhook_id: str) -> bool:
+        db = get_db()
+        result = await db.webhooks.update_one(
+            {"_id": to_object_id(webhook_id, "webhook_id")},
+            {"$set": {"isArchived": False}, "$unset": {"archivedAt": ""}}
         )
-        return result.deleted_count > 0
+        return result.modified_count > 0
 
     @staticmethod
     async def rotate_webhook_token(

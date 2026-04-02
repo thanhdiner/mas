@@ -66,6 +66,8 @@
 
 /* Dark mode is the primary mode per DESIGN.md */
 :root {
+  color-scheme: dark;
+
   /* Surface hierarchy from DESIGN.md */
   --surface-lowest: #060e20;
   --surface-low: #131b2e;

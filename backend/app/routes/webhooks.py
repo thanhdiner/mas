@@ -173,17 +173,32 @@ async def _wait_for_existing_task_id(
     dependencies=[Depends(get_current_active_user)],
 )
 async def list_webhooks(
+    is_archived: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(15, ge=1, le=100)
 ):
     skip = (page - 1) * page_size
-    items, total = await WebhookService.list_webhooks(skip=skip, limit=page_size)
+    items, total = await WebhookService.list_webhooks(is_archived=is_archived, skip=skip, limit=page_size)
     return {
         "items": items,
         "total": total,
         "page": page,
         "pageSize": page_size
     }
+
+@router.delete("/{webhook_id}", dependencies=[Depends(get_current_active_user)])
+async def delete_webhook(webhook_id: ValidObjectId, hard: bool = Query(False)):
+    deleted = await WebhookService.delete_webhook(webhook_id, hard)
+    if not deleted:
+        raise NotFoundError("webhook_not_found", "Webhook not found")
+    return {"message": "Webhook deleted"}
+
+@router.post("/{webhook_id}/restore", dependencies=[Depends(get_current_active_user)])
+async def restore_webhook(webhook_id: ValidObjectId):
+    restored = await WebhookService.restore_webhook(webhook_id)
+    if not restored:
+        raise NotFoundError("webhook_not_found", "Webhook not found")
+    return {"message": "Webhook restored", "webhookId": webhook_id}
 
 
 @router.get(

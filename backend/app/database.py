@@ -19,6 +19,7 @@ async def connect_db():
     await db.tasks.create_index("assignedAgentId")
     await db.tasks.create_index("parentTaskId")
     await db.tasks.create_index("archivedAt", expireAfterSeconds=2592000)
+    await db.agents.create_index("archivedAt", expireAfterSeconds=2592000)
     await db.executions.create_index("taskId")
     await db.execution_steps.create_index("executionId")
     await db.approvals.create_index("taskId")
@@ -42,6 +43,8 @@ async def connect_db():
     await db.schedules.create_index("isActive")
     await db.knowledge.create_index("name")
     await db.system_settings.create_index("type", unique=True)
+    await db.facebook_pages.create_index("pageId", unique=True)
+    await db.facebook_pages.create_index("createdAt")
 
     print(f"Connected to MongoDB: {settings.MONGODB_DB}")
 

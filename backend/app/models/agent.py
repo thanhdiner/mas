@@ -47,3 +47,5 @@ class AgentResponse(BaseModel):
     provider: Optional[str] = None
     createdAt: datetime
     updatedAt: Optional[datetime] = None
+    isArchived: bool = Field(default=False)
+    archivedAt: Optional[datetime] = None

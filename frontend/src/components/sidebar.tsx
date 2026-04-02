@@ -17,6 +17,7 @@ import {
   Webhook as WebhookIcon,
   Settings,
   Trash2,
+  Share2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -39,6 +40,16 @@ const navGroups = [
     children: [
       { href: "/tasks", label: "All Tasks" },
       { href: "/tasks/new", label: "New Task" },
+    ]
+  },
+  {
+    id: "social",
+    label: "Social Media",
+    icon: Share2,
+    children: [
+      { href: "/social/facebook", label: "FB Dashboard" },
+      { href: "/social/facebook/pages", label: "All Fanpages" },
+      { href: "/social/zalo", label: "Zalo Integrations" }
     ]
   },
   {
@@ -89,6 +100,7 @@ export function Sidebar({
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     agents: true,
     tasks: true,
+    social: true,
   });
 
   // Load from localStorage

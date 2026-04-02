@@ -10,6 +10,8 @@ import {
   Bot,
   ChevronDown,
   ChevronUp,
+  Check,
+  Archive,
   Copy,
   Download,
   Eye,
@@ -46,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -572,6 +575,55 @@ function WebhooksContent() {
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyWebhookId, setBusyWebhookId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleAll = () => {
+    if (selectedIds.size === filteredWebhooks.length && filteredWebhooks.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredWebhooks.map((w) => w.id)));
+    }
+  };
+
+  const toggleWebhook = (id: string, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleArchiveSelected = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const promises = Array.from(selectedIds).map((id) => api.webhooks.delete(id));
+      await Promise.all(promises);
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+      toast.success(`Archived ${selectedIds.size} webhooks.`);
+      setSelectedIds(new Set());
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to archive webhooks");
+    }
+  };
+
+  const handleArchiveWebhook = async (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await api.webhooks.delete(id);
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.success("Archived webhook.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to archive webhook");
+    }
+  };
   const [secretReveal, setSecretReveal] = useState<SecretRevealState | null>(null);
   const [copiedValue, setCopiedValue] = useState("");
   const [expandedWebhookId, setExpandedWebhookId] = useState<string | null>(null);
@@ -599,6 +651,8 @@ function WebhooksContent() {
   const [testingNotificationKind, setTestingNotificationKind] = useState<
     "alert" | "resolved" | null
   >(null);
+  const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null);
+  const [webhookToRotate, setWebhookToRotate] = useState<Webhook | null>(null);
   const [testNotificationPreview, setTestNotificationPreview] =
     useState<TestNotificationPreviewState | null>(null);
   const [showOnlyChangedPreviewLines, setShowOnlyChangedPreviewLines] =
@@ -1013,52 +1067,46 @@ function WebhooksContent() {
     }
   };
 
-  const handleDelete = async (webhook: Webhook) => {
-    const confirmed = window.confirm(
-      `Delete webhook '${webhook.name}'? Existing integrations using its URL will stop working immediately.`
-    );
-    if (!confirmed) {
-      return;
-    }
+  const handleDelete = (webhook: Webhook) => {
+    setWebhookToDelete(webhook);
+  };
 
-    setBusyWebhookId(webhook.id);
-    setPageError("");
+  const confirmDelete = async () => {
+    if (!webhookToDelete) return;
+    setBusyWebhookId(webhookToDelete.id);
     try {
-      await api.webhooks.delete(webhook.id);
+      await api.webhooks.delete(webhookToDelete.id);
       await fetchData();
+      toast.success(`Webhook '${webhookToDelete.name}' deleted successfully.`);
     } catch (error) {
-      setPageError(
-        error instanceof Error ? error.message : "Failed to delete webhook."
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to delete webhook.");
     } finally {
       setBusyWebhookId(null);
+      setWebhookToDelete(null);
     }
   };
 
-  const handleRotateToken = async (webhook: Webhook) => {
-    const confirmed = window.confirm(
-      `Rotate token for '${webhook.name}'? The old trigger URL will stop working.`
-    );
-    if (!confirmed) {
-      return;
-    }
+  const handleRotateToken = (webhook: Webhook) => {
+    setWebhookToRotate(webhook);
+  };
 
-    setBusyWebhookId(webhook.id);
-    setPageError("");
+  const confirmRotate = async () => {
+    if (!webhookToRotate) return;
+    setBusyWebhookId(webhookToRotate.id);
     try {
-      const rotated = await api.webhooks.rotateToken(webhook.id);
+      const rotated = await api.webhooks.rotateToken(webhookToRotate.id);
       setSecretReveal({
         name: rotated.name,
         token: rotated.token,
         triggerUrl: rotated.triggerUrl,
       });
       await fetchData();
+      toast.success(`Token rotated for '${webhookToRotate.name}'.`);
     } catch (error) {
-      setPageError(
-        error instanceof Error ? error.message : "Failed to rotate webhook token."
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to rotate webhook token.");
     } finally {
       setBusyWebhookId(null);
+      setWebhookToRotate(null);
     }
   };
 
@@ -2223,7 +2271,23 @@ function WebhooksContent() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <div 
+                  className="flex items-center justify-center cursor-pointer w-4 h-4 rounded border transition-colors shrink-0"
+                  style={{
+                    borderColor: filteredWebhooks.length > 0 && selectedIds.size === filteredWebhooks.length ? "var(--accent-cyan)" : "rgba(255,255,255,0.2)",
+                    background: filteredWebhooks.length > 0 && selectedIds.size === filteredWebhooks.length ? "var(--accent-cyan)" : "var(--surface-lowest)"
+                  }}
+                  onClick={() => toggleAll()}
+                >
+                  {filteredWebhooks.length > 0 && selectedIds.size === filteredWebhooks.length && <Check className="w-3 h-3 text-[#060e20]" strokeWidth={3} />}
+                </div>
+                <span className="text-sm text-foreground font-medium">Select All</span>
+            </div>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
           {filteredWebhooks.map((webhook, index) => (
             (() => {
               const deliveryPage = deliveryPagesByWebhook[webhook.id];
@@ -2262,6 +2326,16 @@ function WebhooksContent() {
                   <div className="ml-2 flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        <div 
+                          className="flex items-center justify-center cursor-pointer w-4 h-4 rounded border transition-colors shrink-0"
+                          style={{
+                            borderColor: selectedIds.has(webhook.id) ? "var(--accent-cyan)" : "rgba(255,255,255,0.2)",
+                            background: selectedIds.has(webhook.id) ? "var(--accent-cyan)" : "var(--surface-lowest)"
+                          }}
+                          onClick={(e) => toggleWebhook(webhook.id, e)}
+                        >
+                          {selectedIds.has(webhook.id) && <Check className="w-3 h-3 text-[#060e20]" strokeWidth={3} />}
+                        </div>
                         <p className="font-heading text-lg font-semibold text-foreground">
                           {webhook.name}
                         </p>
@@ -2414,8 +2488,8 @@ function WebhooksContent() {
                             </button>
                           </div>
 
-                          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_auto_auto]">
-                            <div>
+                          <div className="mt-4 flex flex-wrap items-end gap-3">
+                            <div className="flex-1 min-w-[180px]">
                               <Label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.08rem] text-on-surface-dim">
                                 From
                               </Label>
@@ -2429,10 +2503,10 @@ function WebhooksContent() {
                                     event.target.value
                                   )
                                 }
-                                className="border-0 bg-surface-container text-foreground"
+                                className="border-0 bg-surface-container text-foreground w-full"
                               />
                             </div>
-                            <div>
+                            <div className="flex-1 min-w-[180px]">
                               <Label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.08rem] text-on-surface-dim">
                                 To
                               </Label>
@@ -2446,21 +2520,19 @@ function WebhooksContent() {
                                     event.target.value
                                   )
                                 }
-                                className="border-0 bg-surface-container text-foreground"
+                                className="border-0 bg-surface-container text-foreground w-full"
                               />
                             </div>
-                            <div className="flex items-end">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
                               <Button
                                 type="button"
                                 variant="secondary"
                                 onClick={() => handleApplyTimeRange(webhook.id)}
                                 disabled={isRefreshing || isLoadingMore}
-                                className="w-full border-0 bg-surface-container text-foreground"
+                                className="flex-1 sm:flex-none border-0 bg-surface-container text-foreground"
                               >
                                 Apply Range
                               </Button>
-                            </div>
-                            <div className="flex items-end">
                               <Button
                                 type="button"
                                 variant="secondary"
@@ -2470,7 +2542,7 @@ function WebhooksContent() {
                                   isLoadingMore ||
                                   (!activeTimeRange.from && !activeTimeRange.to)
                                 }
-                                className="w-full border-0 bg-surface-container text-foreground disabled:opacity-50"
+                                className="flex-1 sm:flex-none border-0 bg-surface-container text-foreground disabled:opacity-50"
                               >
                                 Clear
                               </Button>
@@ -2705,6 +2777,33 @@ function WebhooksContent() {
             })()
           ))}
         </div>
+        {/* Floating Action Bar */}
+        <div
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-6 py-3 rounded-full shadow-lg transition-all duration-300 z-50 ${
+            selectedIds.size > 0
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 translate-y-4 pointer-events-none"
+          }`}
+          style={{
+            background: "var(--surface-high)",
+            border: "1px solid rgba(255,255,255,0.1)"
+          }}
+        >
+          <span className="text-sm font-medium text-foreground">
+            {selectedIds.size} selected
+          </span>
+          <div className="w-px h-4 bg-white/10 mx-1" />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleArchiveSelected}
+            className="h-8 border-0 bg-[rgba(255,180,171,0.12)] text-[#ffb4ab] hover:bg-[rgba(255,180,171,0.2)]"
+          >
+            <Archive className="w-3.5 h-3.5 mr-2" />
+            Archive Selected
+          </Button>
+        </div>
+      </>
       )}
 
       <Dialog
@@ -3701,6 +3800,88 @@ function WebhooksContent() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!webhookToDelete} onOpenChange={(open) => !open && setWebhookToDelete(null)}>
+        <DialogContent
+          className="sm:max-w-md"
+          style={{
+            background: "var(--surface-high)",
+            borderColor: "rgba(255,255,255,0.1)",
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-heading text-[#ffb4ab]">
+              <Trash2 className="h-5 w-5" />
+              Delete Webhook
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-foreground">
+            <p>
+              Are you sure you want to delete the webhook <strong className="text-white">{webhookToDelete?.name}</strong>?
+            </p>
+            <p className="mt-2 text-on-surface-dim">
+              Existing integrations using its URL will stop working immediately. 
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setWebhookToDelete(null)}
+              className="border-0 bg-surface-container text-foreground hover:bg-surface-lowest"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              className="border-0 bg-[rgba(255,180,171,0.12)] text-[#ffb4ab] hover:bg-[rgba(255,180,171,0.2)]"
+            >
+              Yes, Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rotate Token Confirmation Dialog */}
+      <Dialog open={!!webhookToRotate} onOpenChange={(open) => !open && setWebhookToRotate(null)}>
+        <DialogContent
+          className="sm:max-w-md"
+          style={{
+            background: "var(--surface-high)",
+            borderColor: "rgba(255,255,255,0.1)",
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-heading text-accent-cyan">
+              <RotateCw className="h-5 w-5" />
+              Rotate Webhook Token
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-foreground">
+            <p>
+              Are you sure you want to rotate the token for <strong className="text-white">{webhookToRotate?.name}</strong>?
+            </p>
+            <p className="mt-2 text-on-surface-dim">
+              The old trigger URL will be permanently invalidated and will stop working immediately. You will receive a new secure trigger URL.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setWebhookToRotate(null)}
+              className="border-0 bg-surface-container text-foreground hover:bg-surface-lowest"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmRotate}
+              className="border-0 bg-[rgba(123,208,255,0.15)] text-[#7bd0ff] hover:bg-[rgba(123,208,255,0.25)]"
+            >
+              Yes, Rotate Token
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

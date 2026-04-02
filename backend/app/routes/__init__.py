@@ -10,6 +10,7 @@ from app.routes.schedules import router as schedules_router
 from app.routes.playground import router as playground_router
 from app.routes.knowledge import router as knowledge_router
 from app.routes.settings import router as settings_router
+from app.routes.facebook import router as facebook_router
 
 __all__ = [
     "agents_router",
@@ -24,4 +25,5 @@ __all__ = [
     "playground_router",
     "knowledge_router",
     "settings_router",
+    "facebook_router",
 ]

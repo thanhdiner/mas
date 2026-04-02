@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     # Cloudinary
     CLOUDINARY_URL: str = ""
     CREDENTIALS_SECRET_KEY: str = ""
+
+    # Facebook OAuth
+    FACEBOOK_APP_ID: str = ""
+    FACEBOOK_APP_SECRET: str = ""
+    FACEBOOK_REDIRECT_URI: str = "http://localhost:8000/api/social/facebook/callback"
     WEBHOOK_DELIVERY_RETENTION_DAYS: int = 14
     WEBHOOK_IDEMPOTENCY_RETENTION_DAYS: int = 7
     WEBHOOK_RUNTIME_CLEANUP_INTERVAL_HOURS: int = 12
