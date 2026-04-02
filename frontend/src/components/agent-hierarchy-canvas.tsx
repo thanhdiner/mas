@@ -120,12 +120,12 @@ export function AgentHierarchyCanvas() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-0 xl:grid-cols-[1fr_300px] overflow-hidden">
+        <div 
+          className="relative overflow-hidden rounded-2xl border border-white/5"
+          style={{ height: "calc(100vh - 190px)", minHeight: "560px" }}
+        >
           {/* ---- Canvas ---- */}
-          <div
-            className="rounded-l-2xl xl:rounded-r-none rounded-r-2xl xl:border-r-0 border border-white/5 overflow-hidden"
-            style={{ background: "#1a1d26", height: "calc(100vh - 190px)", minHeight: "560px" }}
-          >
+          <div className="w-full h-full" style={{ background: "#1a1d26" }}>
             {/* CSS for edge delete button hover */}
             <style>{`
               .react-flow__edge:hover .edge-delete-btn,
@@ -186,13 +186,18 @@ export function AgentHierarchyCanvas() {
               <MiniMap
                 nodeColor={() => "rgba(123,208,255,0.4)"}
                 maskColor="rgba(26,29,38,0.9)"
-                className="!bg-[#2a2e3a] !rounded-lg !border-white/10"
+                className="!bg-[#2a2e3a] !rounded-lg !border-white/10 transition-transform duration-200"
+                style={{ transform: graph.selectedAgent ? "translateX(-330px)" : "none", transformOrigin: "bottom right" }}
                 pannable
                 zoomable
               />
 
               {/* Top-right toolbar */}
-              <Panel position="top-right" className="flex items-center gap-2">
+              <Panel 
+                position="top-right" 
+                className="flex items-center gap-2 transition-transform duration-200"
+                style={{ transform: graph.selectedAgent ? "translateX(-330px)" : "none" }}
+              >
                 {graph.selectedAgent && (
                   <button
                     onClick={graph.disconnectSelected}
@@ -261,20 +266,18 @@ export function AgentHierarchyCanvas() {
             </ReactFlow>
           </div>
 
-          {/* ---- Sidebar Inspector ---- */}
-          <div
-            className="rounded-r-2xl border border-l-0 border-white/5 flex flex-col overflow-hidden min-w-0"
-            style={{ background: "#1f222c", height: "calc(100vh - 190px)", minHeight: "560px" }}
-          >
-            {!graph.selectedAgent ? (
-              <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <Info className="h-5 w-5" style={{ color: "rgba(232,234,237,0.25)" }} />
-                </div>
-                <p className="text-sm font-medium" style={{ color: "rgba(232,234,237,0.5)" }}>Select a node</p>
-                <p className="text-[11px] mt-1" style={{ color: "rgba(232,234,237,0.3)" }}>Click any agent to configure.</p>
-              </div>
-            ) : (
+          {/* ---- Sidebar Inspector (Floating) ---- */}
+          {graph.selectedAgent && (
+            <div
+              className="absolute top-0 right-0 h-full w-[320px] border-l border-white/10 flex flex-col shadow-2xl z-10 animate-in slide-in-from-right-8 duration-200"
+              style={{ background: "rgba(31,34,44,0.95)", backdropFilter: "blur(12px)" }}
+            >
+              <button
+                onClick={() => graph.setSelectedNodeId(null)}
+                className="absolute top-4 right-4 z-20 p-1 rounded-md transition-colors hover:bg-white/10"
+              >
+                <X className="h-4 w-4 text-white/50 hover:text-white" />
+              </button>
               <SidebarInspector
                 key={graph.selectedAgent.id}
                 agent={graph.selectedAgent}
@@ -288,8 +291,8 @@ export function AgentHierarchyCanvas() {
                 colorIndex={graph.agents.findIndex((a) => a.id === graph.selectedAgent!.id) % NODE_COLORS.length}
                 onAgentUpdated={graph.onAgentUpdated}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

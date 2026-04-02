@@ -85,7 +85,7 @@ async def _read_webhook_payload(request: Request) -> tuple[bytes, object | None,
     if raw_body:
         try:
             parsed_payload = json.loads(raw_body)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             parsed_payload = None
 
     return raw_body, parsed_payload, content_type

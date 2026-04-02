@@ -72,23 +72,24 @@ const navGroups = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ 
+  collapsed, 
+  setCollapsed, 
+  isLoaded 
+}: { 
+  collapsed: boolean; 
+  setCollapsed: (v: boolean) => void; 
+  isLoaded: boolean;
+}) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     agents: true,
     tasks: true,
   });
-  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage
   useEffect(() => {
-    const storedCollapsed = localStorage.getItem("sidebar_collapsed");
     const storedGroups = localStorage.getItem("sidebar_open_groups");
-
-    if (storedCollapsed !== null) {
-      setCollapsed(storedCollapsed === "true");
-    }
     if (storedGroups) {
       try {
         setOpenGroups(JSON.parse(storedGroups));
@@ -96,16 +97,14 @@ export function Sidebar() {
         console.error("Failed to parse sidebar_open_groups", e);
       }
     }
-    setIsLoaded(true);
   }, []);
 
   // Save to localStorage
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem("sidebar_collapsed", String(collapsed));
       localStorage.setItem("sidebar_open_groups", JSON.stringify(openGroups));
     }
-  }, [collapsed, openGroups, isLoaded]);
+  }, [openGroups, isLoaded]);
 
   const toggleGroup = (id: string) => {
     setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
@@ -140,7 +139,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+      <nav className={`flex-1 px-3 py-4 space-y-2 ${collapsed ? "overflow-visible" : "overflow-y-auto"}`}>
         {navGroups.map((group) => {
           if (!group.children) {
             const isActive = pathname === group.href;
@@ -172,11 +171,11 @@ export function Sidebar() {
           const Icon = group.icon;
 
           return (
-            <div key={id} className="space-y-1">
+            <div key={id} className="space-y-1 relative group/nav">
               <button
                 onClick={() => !collapsed && toggleGroup(id)}
                 className={`w-full group flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
-                  hasActiveChild && !isOpen
+                  hasActiveChild && (!isOpen || collapsed)
                     ? "text-accent-cyan bg-surface-base"
                     : "text-on-surface-dim hover:text-foreground hover:bg-surface-container"
                 }`}
@@ -191,6 +190,35 @@ export function Sidebar() {
                   />
                 )}
               </button>
+              
+              {/* Flyout menu for collapsed state */}
+              {collapsed && (
+                <div className="absolute left-full top-0 pl-2 hidden w-52 group-hover/nav:block z-50">
+                  <div className="rounded-md border border-white/5 bg-surface-high p-2 shadow-2xl">
+                    <div className="mb-2 px-3 pt-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-dim/50">
+                      {group.label}
+                    </div>
+                    <div className="space-y-1">
+                      {group.children.map((child) => {
+                        const isChildActive = pathname === child.href;
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={`block rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 ${
+                              isChildActive
+                                ? "text-accent-cyan bg-surface-base"
+                                : "text-on-surface-dim hover:text-foreground hover:bg-surface-container"
+                            }`}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {!collapsed && isOpen && (
                 <div className="hidden lg:block space-y-1 ml-4 pl-4 border-l border-white/[0.05]">
