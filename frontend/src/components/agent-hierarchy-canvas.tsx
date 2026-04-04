@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel, ConnectionMode } from "@xyflow/react";
+import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel } from "@xyflow/react";
 import type { NodeTypes, EdgeTypes, ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Link from "next/link";
@@ -370,7 +370,6 @@ export function AgentHierarchyCanvas() {
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               isValidConnection={graph.isValidConnection}
-              connectionMode={ConnectionMode.Loose}
               onBeforeDelete={handleBeforeDelete}
               fitView
               fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
@@ -695,12 +694,12 @@ export function AgentHierarchyCanvas() {
           contain: layout style;
         }
         .react-flow__handle {
-          transition: box-shadow 0.15s ease, border-color 0.15s ease;
+          transition: box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
           cursor: crosshair;
+          transform-origin: center center;
         }
         .react-flow__handle:hover,
         .handle-glow:hover {
-          transform: scale(1.4);
           box-shadow: 0 0 10px rgba(123,208,255,0.6), 0 0 20px rgba(123,208,255,0.3);
         }
         .react-flow__edge:hover .react-flow__edge-path {

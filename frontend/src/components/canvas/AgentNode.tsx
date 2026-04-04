@@ -1,11 +1,11 @@
-import { createElement } from "react";
+import { createElement, memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Loader2 } from "lucide-react";
 
 import { NODE_W, NODE_H, NODE_COLORS, type AgentNodeData } from "./constants";
 import { getRoleIcon } from "./utils";
 
-export function AgentNode({ data }: NodeProps<Node<AgentNodeData>>) {
+export const AgentNode = memo(function AgentNode({ data }: NodeProps<Node<AgentNodeData>>) {
   const { agent, isSelected, childCount, colorIndex, execState, execOutput } = data;
   const color = NODE_COLORS[colorIndex];
 
@@ -23,10 +23,16 @@ export function AgentNode({ data }: NodeProps<Node<AgentNodeData>>) {
 
   return (
     <div
-      className={`relative flex items-stretch rounded-lg overflow-visible transition-all duration-150 ${
+      className={`relative flex items-stretch rounded-lg overflow-visible transition-shadow duration-150 ${
         execRing || selectedRing || "shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
       }`}
-      style={{ width: NODE_W, height: NODE_H }}
+      style={{
+        width: NODE_W,
+        height: NODE_H,
+        willChange: "transform",
+        contain: "layout style",
+        backfaceVisibility: "hidden",
+      }}
     >
       {/* Exec state indicator dot */}
       {execState !== "idle" && (
@@ -57,7 +63,7 @@ export function AgentNode({ data }: NodeProps<Node<AgentNodeData>>) {
       {/* Input handle */}
       <div className="absolute -left-[15px] top-1/2 -translate-y-1/2 w-[30px] h-[30px] flex items-center justify-center" style={{ zIndex: 10 }}>
         <Handle type="target" position={Position.Left}
-          className="!w-[14px] !h-[14px] !rounded-full !border-[2px] !bg-[#1a1d26] !border-[rgba(255,255,255,0.25)] hover:!border-[#7bd0ff] hover:!bg-[#7bd0ff] !transition-all !relative !left-0 !top-0 !translate-x-0 !translate-y-0 handle-glow"
+          className="!w-[14px] !h-[14px] !rounded-full !border-[2px] !bg-[#1a1d26] !border-[rgba(255,255,255,0.25)] hover:!border-[#7bd0ff] hover:!bg-[#7bd0ff] !transition-colors !relative !left-0 !top-0 !translate-x-0 !translate-y-0 handle-glow"
         />
       </div>
 
@@ -86,9 +92,9 @@ export function AgentNode({ data }: NodeProps<Node<AgentNodeData>>) {
       {/* Output handle */}
       <div className="absolute -right-[15px] top-1/2 -translate-y-1/2 w-[30px] h-[30px] flex items-center justify-center" style={{ zIndex: 10 }}>
         <Handle type="source" position={Position.Right}
-          className="!w-[14px] !h-[14px] !rounded-full !border-[2px] !bg-[#1a1d26] !border-[rgba(255,255,255,0.25)] hover:!border-[#7bd0ff] hover:!bg-[#7bd0ff] !transition-all !relative !right-0 !top-0 !translate-x-0 !translate-y-0 handle-glow"
+          className="!w-[14px] !h-[14px] !rounded-full !border-[2px] !bg-[#1a1d26] !border-[rgba(255,255,255,0.25)] hover:!border-[#7bd0ff] hover:!bg-[#7bd0ff] !transition-colors !relative !right-0 !top-0 !translate-x-0 !translate-y-0 handle-glow"
         />
       </div>
     </div>
   );
-}
+});
