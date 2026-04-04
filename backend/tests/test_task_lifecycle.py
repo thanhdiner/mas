@@ -82,7 +82,7 @@ class TestTaskLifecycle:
 
         count = await TaskService.count_tasks(TaskStatus.RUNNING)
         assert count == 5
-        mock_db.tasks.count_documents.assert_called_once_with({"status": "running"})
+        mock_db.tasks.count_documents.assert_called_once_with({"status": "running", "isArchived": {"$ne": True}})
 
 
 class TestTaskDispatcher:

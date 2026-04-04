@@ -124,6 +124,8 @@ class FakeCollection:
         for key, value in query.items():
             current = document.get(key)
             if isinstance(value, dict):
+                if "$ne" in value and current == value["$ne"]:
+                    return False
                 if "$lt" in value and not (current is not None and current < value["$lt"]):
                     return False
                 if "$lte" in value and not (current is not None and current <= value["$lte"]):
@@ -246,6 +248,8 @@ def test_webhooks_api_create_list_and_rotate_token(client, monkeypatch):
                 "allowDelegation": True,
                 "requiresApproval": False,
                 "active": True,
+                "isArchived": False,
+                "archivedAt": None,
                 "lastTriggeredAt": None,
                 "createdAt": create_payload["createdAt"],
                 "updatedAt": None,

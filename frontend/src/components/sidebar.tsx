@@ -143,8 +143,8 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className={`flex-1 px-3 py-4 space-y-2 ${collapsed ? "overflow-visible" : "overflow-y-auto"}`}>
+      {/* Navigation — scrollable area */}
+      <nav className="flex-1 min-h-0 px-3 py-4 space-y-2 overflow-y-auto scrollbar-thin">
         {navGroups.map((group) => {
           if (!group.children) {
             const isActive = pathname === group.href;
@@ -248,10 +248,13 @@ export function Sidebar({
             </div>
           );
         })}
+      </nav>
 
-        {/* Action Header */}
+      {/* Bottom pinned section — always visible */}
+      <div className="shrink-0 border-t border-white/[0.03] px-3 py-3 space-y-1">
+        {/* System header */}
         {!collapsed && (
-          <div className="pt-6 pb-2 px-3 hidden lg:block">
+          <div className="pb-2 px-3 hidden lg:block">
             <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-dim/40">
               System
             </span>
@@ -317,13 +320,11 @@ export function Sidebar({
             Logout
           </span>
         </button>
-      </nav>
 
-      {/* Collapse toggle (desktop only) */}
-      <div className="p-4 border-t border-white/[0.03]">
+        {/* Collapse toggle (desktop only) */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex w-full items-center justify-center h-9 rounded-md transition-colors hover:bg-surface-high"
+          className="hidden lg:flex w-full items-center justify-center h-9 mt-2 rounded-md transition-colors hover:bg-surface-high"
           style={{ background: "var(--surface-container)" }}
         >
           {collapsed ? (

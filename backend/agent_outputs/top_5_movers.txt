@@ -1,0 +1,7 @@
+| Rank | Symbol | Name | Price Change | Price |
+| --- | --- | --- | --- | --- |
+| 1    | MSFT   | Microsoft Corporation | 2.43% | 143.47 |
+| 2    | GOOGL  | Alphabet Inc. | 2.31% | 2415.51 |
+| 3    | AMZN   | Amazon.com, Inc. | 2.26% | 3344.45 |
+| 4    | FB     | Facebook, Inc. | 2.21% | 343.43 |
+| 5    | TSLA   | Tesla, Inc. | 2.15% | 2144.45 |

@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
 import httpx
-from pydantic import ValidationError
 
 from app.config import get_settings
 from app.database import get_db
@@ -94,7 +93,7 @@ class FacebookService:
         }
 
         # Use update_one with upsert
-        result = await db.facebook_pages.update_one(
+        await db.facebook_pages.update_one(
             {"pageId": data.get("id", page_id)},
             {"$set": doc, "$setOnInsert": {"createdAt": now}},
             upsert=True

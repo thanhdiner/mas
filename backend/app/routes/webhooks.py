@@ -191,7 +191,7 @@ async def delete_webhook(webhook_id: ValidObjectId, hard: bool = Query(False)):
     deleted = await WebhookService.delete_webhook(webhook_id, hard)
     if not deleted:
         raise NotFoundError("webhook_not_found", "Webhook not found")
-    return {"message": "Webhook deleted"}
+    return {"message": "Webhook deleted", "webhookId": webhook_id}
 
 @router.post("/{webhook_id}/restore", dependencies=[Depends(get_current_active_user)])
 async def restore_webhook(webhook_id: ValidObjectId):
@@ -392,17 +392,6 @@ async def update_webhook(
     if not webhook:
         raise NotFoundError("webhook_not_found", "Webhook not found")
     return webhook
-
-
-@router.delete("/{webhook_id}")
-async def delete_webhook(
-    webhook_id: ValidObjectId,
-    current_user: UserInDB = Depends(get_current_active_user),
-):
-    deleted = await WebhookService.delete_webhook(webhook_id)
-    if not deleted:
-        raise NotFoundError("webhook_not_found", "Webhook not found")
-    return {"message": "Webhook deleted", "webhookId": webhook_id}
 
 
 @router.post("/{webhook_id}/rotate-token", response_model=WebhookSecretResponse)

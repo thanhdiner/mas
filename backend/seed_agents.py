@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime, timezone
-from bson import ObjectId
 
 # Local imports from MAS backend
 from app.database import connect_db, get_db

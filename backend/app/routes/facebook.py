@@ -63,7 +63,6 @@ async def get_facebook_oauth_url():
 @router.get("/callback")
 async def facebook_oauth_callback(code: str = None, error: str = None, request: Request = None):
     """Receives the OAuth callback, fetches tokens, syncs pages, and redirects front-end."""
-    settings = get_settings()
     frontend_url = "http://localhost:3000/social/facebook/pages"
     
     if error or not code:
@@ -78,7 +77,7 @@ async def facebook_oauth_callback(code: str = None, error: str = None, request: 
         
         # 3. Redirect back to frontend
         return RedirectResponse(url=f"{frontend_url}?sync=success")
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
         return RedirectResponse(url=f"{frontend_url}?error=sync_failed")
