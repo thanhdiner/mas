@@ -635,11 +635,11 @@ export function AgentHierarchyCanvas() {
               </div>
             )}
 
-            <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-between">
-              <p className="text-xs" style={{ color: "rgba(232,234,237,0.45)" }}>
+            <DialogFooter className="border-0 bg-transparent mt-4 pt-4 sm:justify-between">
+              <p className="text-xs self-center" style={{ color: "rgba(232,234,237,0.45)" }}>
                 Tip: double-click the empty canvas to open this dialog.
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-4 sm:mt-0">
                 <Button
                   type="button"
                   variant="secondary"
