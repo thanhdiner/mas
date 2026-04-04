@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createElement } from "react";
 import Link from "next/link";
-import { Loader2, ExternalLink, Unlink, X } from "lucide-react";
+import { Loader2, ExternalLink, Unlink, X, Trash2, AlertTriangle } from "lucide-react";
 import type { Edge } from "@xyflow/react";
 
 import { api, type Agent } from "@/lib/api";
@@ -13,7 +13,7 @@ type SidebarTab = "settings" | "connections";
 export function SidebarInspector({
   agent, agents, edges, selectedNodeId, setSelectedNodeId,
   disconnectSelected, removeEdgeBetween, hierarchyInfo, colorIndex,
-  onAgentUpdated,
+  onAgentUpdated, deleteAgent,
 }: {
   agent: Agent;
   agents: Agent[];
@@ -25,6 +25,7 @@ export function SidebarInspector({
   hierarchyInfo: { parent: Agent | null; children: Agent[]; inputs: Agent[] } | null;
   colorIndex: number;
   onAgentUpdated: (a: Agent) => void;
+  deleteAgent: (agentId: string) => Promise<void>;
 }) {
   const [tab, setTab] = useState<SidebarTab>("settings");
   const [form, setForm] = useState({
@@ -33,6 +34,9 @@ export function SidebarInspector({
   });
   const [savingField, setSavingField] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const saveField = useCallback(async (field: string, value: unknown) => {
     setSavingField(true);
@@ -57,6 +61,20 @@ export function SidebarInspector({
     setForm((f) => ({ ...f, active: next }));
     await saveField("active", next);
   };
+
+  const handleDeleteAgent = useCallback(async () => {
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      await deleteAgent(agent.id);
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "Failed to archive agent."
+      );
+      setDeleting(false);
+    }
+  }, [agent.id, deleteAgent]);
 
   const color = NODE_COLORS[colorIndex];
 
@@ -178,7 +196,74 @@ export function SidebarInspector({
                   style={{ background: "rgba(255,255,255,0.05)", color: "#ffb4ab" }}>
                   <Unlink className="h-3 w-3" /> Disconnect
                 </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm((open) => !open);
+                    setDeleteError("");
+                  }}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-white/10"
+                  style={{ background: "rgba(255,109,90,0.12)", color: "#ff8a7a" }}
+                >
+                  <Trash2 className="h-3 w-3" /> Archive
+                </button>
               </div>
+
+              {showDeleteConfirm && (
+                <div
+                  className="rounded-lg border p-3 space-y-3"
+                  style={{
+                    borderColor: "rgba(255,109,90,0.22)",
+                    background: "rgba(255,109,90,0.08)",
+                  }}
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#ff8a7a" }} />
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-medium" style={{ color: "#ffe2de" }}>
+                        Archive this agent?
+                      </p>
+                      <p className="text-[10px]" style={{ color: "rgba(255,226,222,0.75)" }}>
+                        This moves the agent to trash and removes it from the current canvas, including connected edges.
+                      </p>
+                    </div>
+                  </div>
+
+                  {deleteError && (
+                    <p className="text-[10px]" style={{ color: "#ffb4ab" }}>
+                      {deleteError}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteError("");
+                      }}
+                      className="flex-1 rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:bg-white/10"
+                      style={{ background: "rgba(255,255,255,0.05)", color: "#e8eaed" }}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteAgent}
+                      className="flex-1 rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors hover:brightness-110 disabled:opacity-60"
+                      style={{ background: "#ff6d5a", color: "#fff" }}
+                      disabled={deleting}
+                    >
+                      {deleting ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Archiving...
+                        </span>
+                      ) : (
+                        "Confirm Archive"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>

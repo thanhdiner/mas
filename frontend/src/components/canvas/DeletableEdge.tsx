@@ -1,13 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, memo } from "react";
 import {
   BaseEdge,
   getBezierPath,
-  useReactFlow,
   type EdgeProps,
 } from "@xyflow/react";
 import { X } from "lucide-react";
 
-export function DeletableEdge({
+export const DeletableEdge = memo(function DeletableEdge({
   id,
   sourceX,
   sourceY,
@@ -19,8 +18,6 @@ export function DeletableEdge({
   animated,
   style,
 }: EdgeProps) {
-  const { setEdges } = useReactFlow();
-
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -34,18 +31,19 @@ export function DeletableEdge({
   const isHighlighted = selected || animated;
 
   const onDelete = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setEdges((eds) => eds.filter((edge) => edge.id !== id));
-      // dispatch dirty flag via custom event
-      window.dispatchEvent(new CustomEvent("canvas-dirty"));
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      window.dispatchEvent(
+        new CustomEvent("canvas-edge-delete", {
+          detail: { edgeId: id },
+        })
+      );
     },
-    [id, setEdges]
+    [id]
   );
 
   return (
     <>
-      {/* Invisible wider path for easier selection */}
       <path
         d={edgePath}
         fill="none"
@@ -62,7 +60,6 @@ export function DeletableEdge({
           ...(style ?? {}),
         }}
       />
-      {/* Delete button — shown on hover/select via CSS group */}
       <foreignObject
         width={22}
         height={22}
@@ -87,4 +84,4 @@ export function DeletableEdge({
       </foreignObject>
     </>
   );
-}
+});
