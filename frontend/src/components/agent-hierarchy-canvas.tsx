@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel } from "@xyflow/react";
+import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel, ConnectionMode } from "@xyflow/react";
 import type { NodeTypes, EdgeTypes, ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Link from "next/link";
@@ -378,6 +378,7 @@ export function AgentHierarchyCanvas() {
               deleteKeyCode={["Backspace", "Delete"]}
               proOptions={{ hideAttribution: true }}
               style={{ background: "transparent" }}
+              connectionMode={ConnectionMode.Loose}
               connectionLineStyle={{
                 stroke: "#7bd0ff",
                 strokeWidth: 2,
